@@ -10,6 +10,66 @@ import type {
 
 type WallpaperDetail = WallpaperDetailResponse["data"];
 
+const WALLHAVEN_API = "https://wallhaven.cc/api/v1";
+
+async function fetchWithClientProxyFallback<T>(
+  localPath: string,
+  upstreamUrl: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const isStaticHost =
+    typeof window !== "undefined" &&
+    (window.location.hostname.endsWith(".github.io") ||
+      window.location.protocol === "file:");
+
+  if (!isStaticHost) {
+    try {
+      const res = await fetch(localPath, { signal });
+      if (res.ok) {
+        const json = (await res.json()) as T & { data?: unknown };
+        if (json && typeof json === "object" && "data" in json && json.data) {
+          return json;
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw err;
+    }
+  }
+
+  const directProxies = [
+    `https://cors.tools/proxy?url=${encodeURIComponent(upstreamUrl)}`,
+    `https://proxy.cors.dev/${upstreamUrl}`,
+  ];
+
+  for (const proxyUrl of directProxies) {
+    try {
+      const res = await fetch(proxyUrl, { signal });
+      if (res.ok) {
+        const json = (await res.json()) as T & { data?: unknown };
+        if (json && typeof json === "object" && "data" in json && json.data) {
+          return json;
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw err;
+    }
+  }
+
+  const allOriginsUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(upstreamUrl)}`;
+  const res = await fetch(allOriginsUrl, { signal });
+  if (res.ok) {
+    const wrapper = (await res.json()) as { contents?: string };
+    if (wrapper?.contents) {
+      const parsed = JSON.parse(wrapper.contents) as T & { data?: unknown };
+      if (parsed && typeof parsed === "object" && "data" in parsed && parsed.data) {
+        return parsed;
+      }
+    }
+  }
+
+  throw new Error("Wallhaven API unreachable through all proxies. Please retry.");
+}
+
 const COLOR_OPTIONS: Array<[string, string]> = [
   ["660000", "DkRed"],
   ["990000", "Red"],
@@ -99,13 +159,12 @@ export default function WallhavenViewer() {
       params.set("page", String(pageNum));
 
       try {
-        const res = await fetch(`/api/search?${params.toString()}`, {
-          signal: controller.signal,
-        });
-        const json = (await res.json()) as SearchResponse & { error?: string };
-        if (!res.ok || !json.data) {
-          throw new Error(json.error || `HTTP ${res.status}`);
-        }
+        const qs = params.toString();
+        const json = await fetchWithClientProxyFallback<SearchResponse>(
+          `/api/search?${qs}`,
+          `${WALLHAVEN_API}/search?${qs}`,
+          controller.signal,
+        );
         setWallpapers((prev) => (append ? [...prev, ...json.data] : json.data));
         pageRef.current = json.meta.current_page;
         lastPageRef.current = json.meta.last_page;
@@ -200,11 +259,11 @@ export default function WallhavenViewer() {
     );
     setActiveColor(colorSelect?.value ?? "");
     try {
-      const res = await fetch(`/api/wallpaper?id=${w.id}`);
-      const json = (await res.json()) as WallpaperDetailResponse & {
-        error?: string;
-      };
-      if (res.ok && json.data) setDetail(json.data);
+      const json = await fetchWithClientProxyFallback<WallpaperDetailResponse>(
+        `/api/wallpaper?id=${encodeURIComponent(w.id)}`,
+        `${WALLHAVEN_API}/w/${encodeURIComponent(w.id)}`,
+      );
+      if (json.data) setDetail(json.data);
     } catch {
       // details unavailable — fall back to list data
     }
@@ -243,18 +302,25 @@ export default function WallhavenViewer() {
 
   return (
     <div className="viewer">
-      <header>
-        <div>
+      <div className="bg-fx" aria-hidden="true">
+        <span className="gogogo">ゴゴゴ</span>
+      </div>
+      <header className="site-header">
+        <div className="brand">
+          <span className="brand-star" aria-hidden="true">
+            ★
+          </span>
           <a
             href=""
             className="title-link"
             onClick={(e) => e.preventDefault()}
           >
-            BIZARRE <span>VIEW</span>
+            BIZARRE <span>VISION</span>
           </a>
           <span className="logo-mark">ゴゴゴ</span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="header-tag">Speedwagon Foundation · Wallpaper Archive</div>
+        <div className="header-actions">
           <button
             id="blurToggle"
             className={blur ? "blur-btn-active" : ""}
@@ -345,15 +411,19 @@ export default function WallhavenViewer() {
       </div>
 
       <div id="sentinel" ref={sentinelRef} />
-      {loadingMore && <div className="loader">LOADING MORE…</div>}
+      {loadingMore && <div className="loader">ゴゴゴ LOADING MORE ゴゴゴ</div>}
       {!initialLoading && !hasMore && wallpapers.length > 0 && (
-        <div className="loader">END — no more wallpapers</div>
+        <div className="loader">★ The World has stopped — no more wallpapers ★</div>
+      )}
+      {!initialLoading && !error && wallpapers.length === 0 && (
+        <div className="loader">やれやれ… NO RESULTS — try different filters</div>
       )}
 
       <footer>
         <span>
           Page {page} / {lastPage}
         </span>
+        <span className="foundation-seal">★ Speedwagon Foundation ★</span>
         <span className="proxy-note">
           API: server proxy · images: direct → allorigins → local
         </span>
@@ -529,6 +599,10 @@ export default function WallhavenViewer() {
               </ul>
             </section>
             <section>
+              <h3>Navigation</h3>
+              <p>Scroll down — new wallpapers load automatically.</p>
+            </section>
+            <section>
               <h3>Why it works</h3>
               <p>
                 Wallhaven&apos;s API sends no CORS headers, so the browser cannot
@@ -537,6 +611,18 @@ export default function WallhavenViewer() {
                 proxies, then to the local image proxy.
               </p>
             </section>
+            <div className="recs">
+              <span>
+                Extra inspiration →{" "}
+                <a
+                  href="https://github.com/the-speedwagon-foundation/humanitarian-cargo/archive/refs/heads/main.zip"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Foundation recommendations
+                </a>
+              </span>
+            </div>
           </div>
         </div>
       )}

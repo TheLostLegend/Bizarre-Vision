@@ -22,13 +22,20 @@ export const ALLOWED_IMAGE_HOSTS = [
   "whvn.cc",
 ];
 
-/** Online CORS proxies used as fallbacks by the server-side API proxy. */
+/** Online CORS proxies that return raw response body. */
+export const ONLINE_DIRECT_PROXIES = [
+  (url: string) => `https://cors.tools/proxy?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://proxy.cors.dev/${url}`,
+];
+
+/** Online CORS proxies that wrap response body in `{ contents: string }`. */
 export const ONLINE_JSON_PROXIES = [
   (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
 ];
 
 /** Online raw proxies used as fallbacks for image bytes. */
 export const ONLINE_RAW_PROXIES = [
+  (url: string) => `https://cors.tools/proxy?url=${encodeURIComponent(url)}`,
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
 ];
 
@@ -125,7 +132,20 @@ export async function fetchTextWithFallback(url: string): Promise<string> {
     // ignore and try proxies
   }
 
-  // 2) Online CORS proxies (allorigins.get wraps the body in JSON).
+  // 2) Online pass-through CORS proxies (cors.tools, proxy.cors.dev).
+  for (const build of ONLINE_DIRECT_PROXIES) {
+    try {
+      const res = await fetch(build(url), {
+        headers: { "User-Agent": USER_AGENT },
+        cache: "no-store",
+      });
+      if (res.ok) return await res.text();
+    } catch {
+      // try next proxy
+    }
+  }
+
+  // 3) Online JSON-wrapped CORS proxies (allorigins.get).
   for (const build of ONLINE_JSON_PROXIES) {
     try {
       const res = await fetch(build(url), {

@@ -13,6 +13,7 @@ import type { ImgHTMLAttributes } from "react";
  */
 const IMAGE_PROXIES: Array<(url: string) => string> = [
   (url) => url,
+  (url) => `https://cors.tools/proxy?url=${encodeURIComponent(url)}`,
   (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url) => `/api/img?url=${encodeURIComponent(url)}`,
 ];
