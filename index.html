@@ -126,12 +126,24 @@
       --wallpaper-column-min:220px;
       grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--wallpaper-column-min)),1fr));
     }
-    /* Keep the explicitly selected large-preview mode unchanged. */
-    #grid.wallpaper-grid.wide{grid-template-columns:repeat(2,minmax(0,1fr))}
+    /* Framed view: keep the existing small thumbnails, without cropping or stretching them. */
+    #grid.wallpaper-grid.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+    #grid.wide .card-picture{aspect-ratio:4/3;padding:30px 12px 20px;background:#19151f;box-shadow:inset 0 0 0 1px #382c43}
+    #grid.wide .card-picture:after{display:none}
+    #grid.wide .card-open{display:flex;align-items:center;justify-content:center}
+    #grid.wide .card-open img{width:auto;height:auto;max-width:100%;max-height:100%;max-inline-size:300px;block-size:auto;object-fit:contain;transform:none}
+    #grid.wide .card:hover .card-open img{transform:none}
+    @media(max-width:1100px){
+      .ribbon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 24px;padding:11px 32px;margin:0;transform:none;overflow:visible;white-space:normal;font-size:9px;letter-spacing:.6px}
+      .ribbon span{min-width:0;gap:9px;text-align:left;line-height:1.5;white-space:normal;justify-content:flex-start}
+      .ribbon b{flex:0 0 12px;font-size:14px;line-height:1;text-align:center}
+    }
     @media(max-width:940px){#grid.wallpaper-grid{--wallpaper-column-min:190px}}
     @media(max-width:700px){
       #viewerDialog.viewer-dialog{max-height:calc(100dvh - 26px)}
       #grid.wallpaper-grid{--wallpaper-column-min:160px}
+      #grid.wallpaper-grid.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))}
+      .ribbon{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 16px;padding:11px 20px;font-size:8px;letter-spacing:.45px}
     }
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
   </style>
@@ -202,7 +214,7 @@
         <span class="bv-art-caption">REALITY IS OPTIONAL. ↗</span>
       </div>
     </section>
-    <div class="ribbon" aria-hidden="true"><span><b>✦</b> INFINITE DISCOVERY</span><span><b>✦</b> NO BORING SCREENS ALLOWED</span><span><b>✦</b> 4K & BEYOND</span><span><b>✦</b> PURE VISUAL CHAOS</span><span><b>✦</b> FIND YOUR STAND</span><span><b>✦</b> ゴゴゴゴゴ</span></div>
+    <div class="ribbon" aria-hidden="true"><span><b>✦</b> DIO APPROVES</span><span><b>✦</b> PURE VISUAL CHAOS</span><span><b>✦</b> 4K & BEYOND</span><span><b>✦</b> DEMOBILIZATION IS INEVITABLE</span><span><b>✦</b> FIND YOUR STAND</span><span><b>✦</b> ゴゴゴゴゴ</span></div>
     <section class="catalog wrap" id="catalog" aria-label="Wallpaper discovery">
       <form id="searchForm" class="search-panel" autocomplete="off">
         <div class="search-row">
@@ -219,7 +231,7 @@
             <button type="button" class="category-tab" data-category="001" aria-pressed="false"><span class="category-symbol">◎</span> People</button>
             <input type="hidden" name="categories" id="categories" value="111">
           </div>
-          <div class="filter-bottom-right"><span class="purity-label"><svg class="icon"><use href="#i-shield"/></svg><span id="purityLabel">SFW ONLY</span></span><span class="filter-divider"></span><button type="button" class="quality-toggle" id="qualityToggle" aria-pressed="false" title="Minimum resolution: 3840 × 2160">4K+ ONLY</button><span class="filter-divider"></span><div class="density-toggle" role="group" aria-label="Grid density"><button class="density-btn" type="button" data-density="normal" aria-label="Comfortable grid" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button class="density-btn" type="button" data-density="wide" aria-label="Large previews" aria-pressed="false"><svg class="icon"><use href="#i-wide"/></svg></button></div></div>
+          <div class="filter-bottom-right"><span class="purity-label"><svg class="icon"><use href="#i-shield"/></svg><span id="purityLabel">SFW ONLY</span></span><span class="filter-divider"></span><button type="button" class="quality-toggle" id="qualityToggle" aria-pressed="false" title="Minimum resolution: 3840 × 2160">4K+ ONLY</button><span class="filter-divider"></span><div class="density-toggle" role="group" aria-label="Grid density"><button class="density-btn" type="button" data-density="normal" aria-label="Comfortable grid" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button class="density-btn" type="button" data-density="wide" aria-label="Framed, uncropped thumbnails" aria-pressed="false"><svg class="icon"><use href="#i-wide"/></svg></button></div></div>
         </div>
         <div class="advanced-filters" id="advancedFilters" hidden>
           <label class="filter-field" for="atleast">MINIMUM RESOLUTION<select id="atleast" name="atleast"><option value="">Any resolution</option><option value="1920x1080">Full HD · 1920 × 1080</option><option value="2560x1440">QHD · 2560 × 1440</option><option value="3840x2160">4K UHD · 3840 × 2160</option><option value="5120x2880">5K · 5120 × 2880</option><option value="7680x4320">8K · 7680 × 4320</option></select></label>
@@ -550,7 +562,12 @@
       clear(container) {container.querySelectorAll('img').forEach(img=>this.cancel(img));}
     };
     function imageSources(url,kind='thumb') {const safe=safeURL(url);if(!safe)return [];const routes=network.routes().filter(r=>r.id!=='codetabs');return [safe,...routes.filter(r=>r.id!=='direct' && (kind==='thumb' || r.id==='hexlet' || r.id==='corslol' || r.id==='custom')).map(r=>r.make(safe))];}
-    function chooseThumb(w) {const small=w.thumbs.small,large=w.thumbs.large;return app.dataSaver?small: (app.density==='wide'||window.innerWidth>1200&&window.devicePixelRatio>1.5?large:small);}
+    function chooseThumb(w) {
+      const small=w.thumbs.small,large=w.thumbs.large;
+      // Framed mode uses the same thumbnail, centered and uncropped, never a stretched large cell.
+      if(app.density==='wide')return small;
+      return app.dataSaver?small:(window.innerWidth>1200&&window.devicePixelRatio>1.5?large:small);
+    }
     function skeletons(count=8) {const frag=document.createDocumentFragment();for(let n=0;n<count;n++){const card=document.createElement('div');card.className='card skeleton';card.setAttribute('aria-hidden','true');card.innerHTML=`<div class="card-picture"><svg class="icon skeleton-star"><use href="#i-star"/></svg></div><div class="card-body"><div class="card-topline"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="card-bottomline"><span class="skeleton-line short"></span></div></div>`;frag.appendChild(card);}return frag;}
     function makeCard(w,index) {
       const card=document.createElement('article');card.className='card';card.dataset.id=w.id;card.style.setProperty('--accent',w.colors[0]||'#a780f9');
@@ -560,7 +577,7 @@
       const img=document.createElement('img');img.alt=w.category+' wallpaper · '+w.resolution;img.width=600;img.height=375;img.dataset.id=w.id;
       open.append(placeholder,img);const badge=document.createElement('span');badge.className='card-badge'+(w.dimension_x>=3840?' uhd':'');badge.textContent=w.dimension_x>=3840?'4K+':w.category.toUpperCase();
       const save=document.createElement('button');save.type='button';save.className='card-save';save.dataset.save=w.id;save.setAttribute('aria-label','Save wallpaper '+w.id);save.setAttribute('aria-pressed',String(app.saved.has(w.id)));save.innerHTML=icon('heart');
-      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML='ENTER THE VISION '+icon('arrow');
+      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML=icon('arrow');
       picture.append(open,badge,save,cta);const body=document.createElement('div');body.className='card-body';
       const first=document.createElement('div');first.className='card-topline';const id=document.createElement('button');id.className='card-id';id.type='button';id.dataset.open=w.id;id.textContent='#'+w.id;
       const res=document.createElement('span');res.className='card-resolution';res.textContent=w.resolution;first.append(id,res);
