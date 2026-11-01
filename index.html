@@ -7,7 +7,7 @@
   <meta name="description" content="Bizarre Vision — an extraordinary, online wallpaper discovery experience. Find your next Stand on Wallhaven.">
   <meta name="referrer" content="no-referrer">
   <title>Bizarre Vision — Find your next Stand.</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101014'/%3E%3Cpath d='M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z' fill='%23e62243' stroke='%23800f22' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101014'/%3E%3Cpath d='M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z' fill='%23b58aee' stroke='%2368418b' stroke-width='1.5'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://th.wallhaven.cc">
@@ -52,7 +52,7 @@
     /* Compact masthead and Joestar birthmark logo. Existing application UI and behavior stay intact. */
     .site-header .brand{gap:10px}
     .site-header .brand-mark{width:39px;height:43px;background:none;border:0;border-radius:0;box-shadow:none;transform:rotate(-12deg)}
-    .site-header .brand-mark svg{width:39px;height:39px;fill:#e63946;stroke:#9b1c31;stroke-width:1.5;stroke-linejoin:round;filter:drop-shadow(0 2px 0 #0008)}
+    .site-header .brand-mark svg{width:39px;height:39px;fill:#b58aee;stroke:#68418b;stroke-width:1.5;stroke-linejoin:round;filter:drop-shadow(0 2px 0 #0008)}
     .site-header .brand-name{font:900 italic 24px/.95 var(--display);letter-spacing:.1px;white-space:nowrap}
     .site-header .brand-name span{color:var(--lime);padding-left:2px}
     .site-header .brand-sub{font-size:6px;letter-spacing:1.7px;margin-top:5px}
@@ -98,7 +98,7 @@
       #hero .hero-link{font-size:8px;padding:3px 0}
     }
     @media(max-width:700px){
-      .site-header .brand-mark{width:33px;height:38}.site-header .brand-mark svg{width:33px;height:33px}
+      .site-header .brand-mark{width:33px;height:38px}.site-header .brand-mark svg{width:33px;height:33px}
       .site-header .brand-name{font-size:20px;line-height:.95}.site-header .brand{gap:8px}
       #hero.bv-intro{display:block;grid-template-columns:1fr;padding:21px 20px 22px;min-height:0}
       #hero .bv-intro-art{display:none}
@@ -115,6 +115,23 @@
       #hero .bv-intro-bottom{display:block;margin-top:11px}
       #hero .bv-intro-bottom p{font-size:11px;line-height:1.65}
       #hero .hero-link{display:inline-flex;margin-top:10px;padding:3px 0;font-size:8px}
+    }
+    /* Final layout corrections: center the original dialog and let the standard grid grow with the viewport. */
+    #viewerDialog.viewer-dialog{
+      position:fixed;inset:0;margin:auto;height:fit-content;
+      max-height:calc(100dvh - 48px);overflow:auto;
+    }
+    #catalog.wrap{max-width:none}
+    #grid.wallpaper-grid{
+      --wallpaper-column-min:220px;
+      grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--wallpaper-column-min)),1fr));
+    }
+    /* Keep the explicitly selected large-preview mode unchanged. */
+    #grid.wallpaper-grid.wide{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media(max-width:940px){#grid.wallpaper-grid{--wallpaper-column-min:190px}}
+    @media(max-width:700px){
+      #viewerDialog.viewer-dialog{max-height:calc(100dvh - 26px)}
+      #grid.wallpaper-grid{--wallpaper-column-min:160px}
     }
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
   </style>
@@ -147,7 +164,7 @@
       <a class="brand" href="./" id="brandLink" aria-label="Bizarre Vision home">
         <span class="brand-mark">
           <svg viewBox="0 0 64 64" role="img" aria-label="Joestar birthmark star">
-            <path fill="red" d="M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z"/>
+            <path d="M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z"/>
           </svg>
         </span>
         <div><div class="brand-name">BIZARRE <span>VISION</span></div><div class="brand-sub">THE UNORDINARY ARCHIVE</div></div>
@@ -185,7 +202,7 @@
         <span class="bv-art-caption">REALITY IS OPTIONAL. ↗</span>
       </div>
     </section>
-    <div class="ribbon" aria-hidden="true"><span><b>✦</b> DIO APPROVES</span><span><b>✦</b> PURE VISUAL CHAOS</span><span><b>✦</b> 4K & BEYOND</span><span><b>✦</b> DEMOBILIZATION IS INEVITABLE</span><span><b>✦</b> FIND YOUR STAND</span><span><b>✦</b> ゴゴゴゴゴ</span></div>
+    <div class="ribbon" aria-hidden="true"><span><b>✦</b> INFINITE DISCOVERY</span><span><b>✦</b> NO BORING SCREENS ALLOWED</span><span><b>✦</b> 4K & BEYOND</span><span><b>✦</b> PURE VISUAL CHAOS</span><span><b>✦</b> FIND YOUR STAND</span><span><b>✦</b> ゴゴゴゴゴ</span></div>
     <section class="catalog wrap" id="catalog" aria-label="Wallpaper discovery">
       <form id="searchForm" class="search-panel" autocomplete="off">
         <div class="search-row">
@@ -543,7 +560,7 @@
       const img=document.createElement('img');img.alt=w.category+' wallpaper · '+w.resolution;img.width=600;img.height=375;img.dataset.id=w.id;
       open.append(placeholder,img);const badge=document.createElement('span');badge.className='card-badge'+(w.dimension_x>=3840?' uhd':'');badge.textContent=w.dimension_x>=3840?'4K+':w.category.toUpperCase();
       const save=document.createElement('button');save.type='button';save.className='card-save';save.dataset.save=w.id;save.setAttribute('aria-label','Save wallpaper '+w.id);save.setAttribute('aria-pressed',String(app.saved.has(w.id)));save.innerHTML=icon('heart');
-      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML='ENTER THE VISION '+icon('arrow');
+      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML=icon('arrow');
       picture.append(open,badge,save,cta);const body=document.createElement('div');body.className='card-body';
       const first=document.createElement('div');first.className='card-topline';const id=document.createElement('button');id.className='card-id';id.type='button';id.dataset.open=w.id;id.textContent='#'+w.id;
       const res=document.createElement('span');res.className='card-resolution';res.textContent=w.resolution;first.append(id,res);
