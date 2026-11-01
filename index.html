@@ -7,7 +7,7 @@
   <meta name="description" content="Bizarre Vision — an extraordinary, online wallpaper discovery experience. Find your next Stand on Wallhaven.">
   <meta name="referrer" content="no-referrer">
   <title>Bizarre Vision — Find your next Stand.</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101014'/%3E%3Cpath d='M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z' fill='%23b58aee' stroke='%2368418b' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101014'/%3E%3Cpath d='M32 5C33 5 33.6 5.8 34.2 7.3L40.2 20.6L55.1 22.2C57.6 22.5 58.4 24.6 56.6 26.4L45.7 37L48.7 51.9C49.2 54.7 47.6 56 45.2 54.7L32 47.5L18.8 54.7C16.4 56 14.8 54.7 15.3 51.9L18.3 37L7.4 26.4C5.6 24.6 6.4 22.5 8.9 22.2L23.8 20.6L29.8 7.3C30.4 5.8 31 5 32 5Z' fill='%238A2BE2' stroke='%234B0082' stroke-width='1.5'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://th.wallhaven.cc">
@@ -52,7 +52,7 @@
     /* Compact masthead and Joestar birthmark logo. Existing application UI and behavior stay intact. */
     .site-header .brand{gap:10px}
     .site-header .brand-mark{width:39px;height:43px;background:none;border:0;border-radius:0;box-shadow:none;transform:rotate(-12deg)}
-    .site-header .brand-mark svg{width:39px;height:39px;fill:#b58aee;stroke:#68418b;stroke-width:1.5;stroke-linejoin:round;filter:drop-shadow(0 2px 0 #0008)}
+    .site-header .brand-mark svg{width:39px;height:39px;fill:#8A2BE2;stroke:#4B0082;stroke-width:1.5;stroke-linejoin:round;filter:drop-shadow(0 2px 0 #0008)}
     .site-header .brand-name{font:900 italic 24px/.95 var(--display);letter-spacing:.1px;white-space:nowrap}
     .site-header .brand-name span{color:var(--lime);padding-left:2px}
     .site-header .brand-sub{font-size:6px;letter-spacing:1.7px;margin-top:5px}
@@ -560,7 +560,7 @@
       const img=document.createElement('img');img.alt=w.category+' wallpaper · '+w.resolution;img.width=600;img.height=375;img.dataset.id=w.id;
       open.append(placeholder,img);const badge=document.createElement('span');badge.className='card-badge'+(w.dimension_x>=3840?' uhd':'');badge.textContent=w.dimension_x>=3840?'4K+':w.category.toUpperCase();
       const save=document.createElement('button');save.type='button';save.className='card-save';save.dataset.save=w.id;save.setAttribute('aria-label','Save wallpaper '+w.id);save.setAttribute('aria-pressed',String(app.saved.has(w.id)));save.innerHTML=icon('heart');
-      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML=icon('arrow');
+      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML='ENTER THE VISION '+icon('arrow');
       picture.append(open,badge,save,cta);const body=document.createElement('div');body.className='card-body';
       const first=document.createElement('div');first.className='card-topline';const id=document.createElement('button');id.className='card-id';id.type='button';id.dataset.open=w.id;id.textContent='#'+w.id;
       const res=document.createElement('span');res.className='card-resolution';res.textContent=w.resolution;first.append(id,res);
@@ -669,7 +669,14 @@
       }catch(error) {
         if(generation!==app.generation||controller.signal.aborted||error.name==='AbortError')return;
         if(app.page===0)grid.querySelectorAll('.skeleton').forEach(card=>card.remove());showError(error);
-      }finally {if(generation===app.generation)app.busy=false;}
+      }finally {
+        if(generation===app.generation){
+          app.busy=false;
+          // The sentinel can remain inside the observation area after a short row layout.
+          // Re-check it after the request instead of waiting for an edge that may never fire.
+          schedulePaginationCheck();
+        }
+      }
     }
     function showError(error) {
       clearInterval(app.retryTimer);app.error=error;
@@ -865,7 +872,24 @@
       else if(key==='b'){e.preventDefault();setBlur(!app.blur);toast(app.blur?'Gallery blur on.':'Gallery blur off.');}
       else if(key==='?'){e.preventDefault();$('helpDialog').showModal();}
     });
-    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!app.busy&&!app.error&&!app.collection&&app.page<app.lastPage&&!document.hidden&&!document.querySelector('dialog[open]'))loadPage();},{rootMargin:'650px 0px',threshold:0});observer.observe(sentinel);
+    let paginationFrame=0;
+    function schedulePaginationCheck() {
+      if(paginationFrame)return;
+      paginationFrame=requestAnimationFrame(()=>{
+        paginationFrame=0;
+        if(app.collection||app.busy||app.error||app.page>=app.lastPage||document.hidden||document.querySelector('dialog[open]'))return;
+        const bounds=sentinel.getBoundingClientRect();
+        if(bounds.top<innerHeight+650&&bounds.bottom>=-650)loadPage();
+      });
+    }
+    const observer=new IntersectionObserver(entries=>{
+      if(entries.some(entry=>entry.isIntersecting))schedulePaginationCheck();
+    },{rootMargin:'650px 0px',threshold:0});
+    observer.observe(sentinel);
+    // Reflow from zoom can change the sentinel's position without an intersection transition.
+    const gridLayoutObserver=new ResizeObserver(schedulePaginationCheck);
+    gridLayoutObserver.observe(grid);
+    window.addEventListener('resize',schedulePaginationCheck,{passive:true});
     window.addEventListener('online',()=>{if(app.error&&!app.collection){app.error=null;network.reset();loadPage();}});
     window.addEventListener('offline',()=>{network.setStatus('offline','OFFLINE');});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!app.busy&&!app.error&&app.page<app.lastPage&&sentinel.getBoundingClientRect().top<innerHeight+650)loadPage();});
