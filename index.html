@@ -126,24 +126,45 @@
       --wallpaper-column-min:220px;
       grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--wallpaper-column-min)),1fr));
     }
-    /* Framed view: keep the existing small thumbnails, without cropping or stretching them. */
-    #grid.wallpaper-grid.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
-    #grid.wide .card-picture{aspect-ratio:4/3;padding:30px 12px 20px;background:#19151f;box-shadow:inset 0 0 0 1px #382c43}
-    #grid.wide .card-picture:after{display:none}
-    #grid.wide .card-open{display:flex;align-items:center;justify-content:center}
-    #grid.wide .card-open img{width:auto;height:auto;max-width:100%;max-height:100%;max-inline-size:300px;block-size:auto;object-fit:contain;transform:none}
+    /* Catalog view: keep the existing thumbnail size instead of stretching a low-resolution tile. */
+    #grid.wallpaper-grid.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,390px),1fr));gap:12px}
+    #grid.wide .card{display:grid;grid-template-columns:minmax(0,52%) minmax(0,1fr);align-items:stretch;contain-intrinsic-size:auto 150px}
+    #grid.wide .card-picture{width:100%;max-width:224px;aspect-ratio:16/10;align-self:center}
+    #grid.wide .card-body{display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0;padding:15px}
+    #grid.wide .card-topline{flex-direction:column;align-items:flex-start;gap:8px}
+    #grid.wide .card-id{font:700 12px var(--mono)}
+    #grid.wide .card-resolution{font:9px var(--mono);color:#aa9ab7}
+    #grid.wide .card-bottomline{margin:0;flex-wrap:wrap;gap:8px}
+    #grid.wide .card-category{font:8px var(--mono)}
+    #grid.wide .card-cta{display:none}
     #grid.wide .card:hover .card-open img{transform:none}
-    @media(max-width:1100px){
-      .ribbon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 24px;padding:11px 32px;margin:0;transform:none;overflow:visible;white-space:normal;font-size:9px;letter-spacing:.6px}
-      .ribbon span{min-width:0;gap:9px;text-align:left;line-height:1.5;white-space:normal;justify-content:flex-start}
-      .ribbon b{flex:0 0 12px;font-size:14px;line-height:1;text-align:center}
-    }
+    .catalog-details{display:none}
+    #grid.wide .catalog-details{display:flex;flex:1;flex-direction:column;gap:8px;min-width:0}
+    .catalog-label{font:7px var(--mono);letter-spacing:.6px;color:#9986a8}
+    .catalog-tags{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;max-height:76px;min-width:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#675075 transparent}
+    .catalog-tags .tag{font-size:8px;line-height:1.3;max-width:100%;padding:4px 5px;overflow-wrap:anywhere;white-space:normal;text-align:left}
+    .catalog-tags .tag:focus-visible{outline-offset:-2px}
+    .catalog-tag-status{color:#9986a8;font:9px/1.6 var(--mono)}
+    .catalog-tag-retry{font:9px var(--mono);padding:3px 0;color:var(--purple);background:none;text-decoration:underline;text-underline-offset:2px}
+    .catalog-actions{display:flex;justify-content:flex-end;margin-top:auto;padding-top:9px;border-top:1px solid #362a40}
+    .catalog-download{display:inline-flex;align-items:center;justify-content:center;gap:6px;max-width:100%;min-height:29px;border:1px solid var(--lime);border-radius:4px;background:var(--lime);color:#171b0c;padding:6px 9px;font-size:9px;line-height:1.4;font-weight:750;text-align:center}
+    .catalog-download .icon{width:12px;height:12px}
+    .catalog-download:hover{background:#eaff87}
+    .catalog-download:disabled{cursor:wait;opacity:.6}
     @media(max-width:940px){#grid.wallpaper-grid{--wallpaper-column-min:190px}}
     @media(max-width:700px){
       #viewerDialog.viewer-dialog{max-height:calc(100dvh - 26px)}
       #grid.wallpaper-grid{--wallpaper-column-min:160px}
-      #grid.wallpaper-grid.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))}
-      .ribbon{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 16px;padding:11px 20px;font-size:8px;letter-spacing:.45px}
+      #grid.wallpaper-grid.wide{grid-template-columns:minmax(0,1fr);gap:10px}
+      #grid.wide .card{grid-template-columns:minmax(0,46%) minmax(0,1fr)}
+      #grid.wide .card-body{padding:10px;gap:10px}
+      #grid.wide .card-topline{gap:6px}
+      #grid.wide .card-id{font-size:10px}
+      #grid.wide .card-resolution{font-size:8px}
+      #grid.wide .card-category{font-size:7px}
+      .ribbon{width:100%;max-width:100%;margin:0;transform:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:6px 12px;white-space:normal;overflow:visible}
+      .ribbon span{min-width:0;justify-content:center;gap:6px;padding:6px 4px;font-size:8px;line-height:1.4;letter-spacing:.2px;text-align:center;white-space:normal;overflow-wrap:anywhere}
+      .ribbon span b{flex:0 0 auto;font:800 13px/1 var(--display)}
     }
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
   </style>
@@ -231,7 +252,7 @@
             <button type="button" class="category-tab" data-category="001" aria-pressed="false"><span class="category-symbol">◎</span> People</button>
             <input type="hidden" name="categories" id="categories" value="111">
           </div>
-          <div class="filter-bottom-right"><span class="purity-label"><svg class="icon"><use href="#i-shield"/></svg><span id="purityLabel">SFW ONLY</span></span><span class="filter-divider"></span><button type="button" class="quality-toggle" id="qualityToggle" aria-pressed="false" title="Minimum resolution: 3840 × 2160">4K+ ONLY</button><span class="filter-divider"></span><div class="density-toggle" role="group" aria-label="Grid density"><button class="density-btn" type="button" data-density="normal" aria-label="Comfortable grid" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button class="density-btn" type="button" data-density="wide" aria-label="Framed, uncropped thumbnails" aria-pressed="false"><svg class="icon"><use href="#i-wide"/></svg></button></div></div>
+          <div class="filter-bottom-right"><span class="purity-label"><svg class="icon"><use href="#i-shield"/></svg><span id="purityLabel">SFW ONLY</span></span><span class="filter-divider"></span><button type="button" class="quality-toggle" id="qualityToggle" aria-pressed="false" title="Minimum resolution: 3840 × 2160">4K+ ONLY</button><span class="filter-divider"></span><div class="density-toggle" role="group" aria-label="Grid density"><button class="density-btn" type="button" data-density="normal" aria-label="Comfortable grid" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button class="density-btn" type="button" data-density="wide" aria-label="Catalog view" aria-pressed="false"><svg class="icon"><use href="#i-wide"/></svg></button></div></div>
         </div>
         <div class="advanced-filters" id="advancedFilters" hidden>
           <label class="filter-field" for="atleast">MINIMUM RESOLUTION<select id="atleast" name="atleast"><option value="">Any resolution</option><option value="1920x1080">Full HD · 1920 × 1080</option><option value="2560x1440">QHD · 2560 × 1440</option><option value="3840x2160">4K UHD · 3840 × 2160</option><option value="5120x2880">5K · 5120 × 2880</option><option value="7680x4320">8K · 7680 × 4320</option></select></label>
@@ -279,7 +300,7 @@
     <div class="dialog-head"><span class="dialog-heading"><span class="lime">✦</span> STAND INSPECTOR <span id="viewerPosition"></span></span><div class="viewer-controls"><button class="icon-btn" id="prevWallpaper" aria-label="Previous wallpaper" title="Previous wallpaper (←)"><svg class="icon"><use href="#i-left"/></svg></button><button class="icon-btn" id="nextWallpaper" aria-label="Next wallpaper" title="Next wallpaper (→)"><svg class="icon"><use href="#i-right"/></svg></button><button class="icon-btn" data-close aria-label="Close wallpaper" title="Close (Esc)"><svg class="icon"><use href="#i-close"/></svg></button></div></div>
     <div class="viewer-layout">
       <div class="viewer-stage loading" id="viewerStage" aria-busy="true">
-        <span class="viewer-placeholder" aria-hidden="true">✦</span>
+
         <img id="viewerImage" class="viewer-image" alt="Original full-resolution wallpaper" decoding="async">
         <span id="viewerOriginalLabel" class="viewer-preview-label">ORIGINAL / LOADING</span>
       </div>
@@ -478,7 +499,7 @@
       app.blur=value;document.body.classList.toggle('blur-on',value);$('blurToggle').setAttribute('aria-pressed',String(value));
       $('blurToggle').title=value?'Gallery blur on — hover to reveal (B)':'Gallery blur off (B)';storage.set('blur',value);
     }
-    function setDensity(density) {app.density=density==='wide'?'wide':'normal';grid.classList.toggle('wide',app.density==='wide');document.querySelectorAll('[data-density]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.density===app.density)));storage.set('density',app.density);}
+    function setDensity(density) {app.density=density==='wide'?'wide':'normal';grid.classList.toggle('wide',app.density==='wide');document.querySelectorAll('[data-density]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.density===app.density)));catalogMetadata.refresh();storage.set('density',app.density);}
     function setSaved(w,force) {
       const add=force??!app.saved.has(w.id);
       if(add&&!app.saved.has(w.id)&&app.saved.size>=200){toast('Your collection holds 200 wallpapers. Remove one before adding another.');return;}
@@ -559,16 +580,85 @@
         job.cancelled=true;job.queued=false;this.release(job);this.jobs.delete(img);this.observer.unobserve(img);
         img.removeAttribute('src');this.pending=this.pending.filter(j=>j!==job);this.pump();
       },
-      clear(container) {container.querySelectorAll('img').forEach(img=>this.cancel(img));}
+      clear(container) {catalogMetadata.clear();container.querySelectorAll('img').forEach(img=>this.cancel(img));}
     };
     function imageSources(url,kind='thumb') {const safe=safeURL(url);if(!safe)return [];const routes=network.routes().filter(r=>r.id!=='codetabs');return [safe,...routes.filter(r=>r.id!=='direct' && (kind==='thumb' || r.id==='hexlet' || r.id==='corslol' || r.id==='custom')).map(r=>r.make(safe))];}
-    function chooseThumb(w) {
-      const small=w.thumbs.small,large=w.thumbs.large;
-      // Framed mode uses the same thumbnail, centered and uncropped, never a stretched large cell.
-      if(app.density==='wide')return small;
-      return app.dataSaver?small:(window.innerWidth>1200&&window.devicePixelRatio>1.5?large:small);
-    }
+    function chooseThumb(w) {const small=w.thumbs.small,large=w.thumbs.large;return app.dataSaver?small: (window.innerWidth>1200&&window.devicePixelRatio>1.5?large:small);}
     function skeletons(count=8) {const frag=document.createDocumentFragment();for(let n=0;n<count;n++){const card=document.createElement('div');card.className='card skeleton';card.setAttribute('aria-hidden','true');card.innerHTML=`<div class="card-picture"><svg class="icon skeleton-star"><use href="#i-star"/></svg></div><div class="card-body"><div class="card-topline"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="card-bottomline"><span class="skeleton-line short"></span></div></div>`;frag.appendChild(card);}return frag;}
+    // Catalog metadata uses the same Wallhaven detail endpoint as the viewer.
+    // It is lazy, serial, and does not cancel a request another control may share.
+    const catalogMetadata={
+      jobs:new Map(),queue:[],active:null,epoch:0,
+      observer:new IntersectionObserver(entries=>{
+        for(const entry of entries){
+          if(!grid.classList.contains('wide'))continue;
+          const job=catalogMetadata.jobs.get(entry.target);if(!job||job.ready)continue;
+          job.visible=entry.isIntersecting;
+          if(job.visible)catalogMetadata.enqueue(job);
+          else if(job.queued){job.queued=false;catalogMetadata.queue=catalogMetadata.queue.filter(item=>item!==job);}
+        }
+      },{rootMargin:'250px 0px'}),
+      watch(card,w){
+        const job={card,wallpaper:w,box:card.querySelector('.catalog-tags'),ready:false,failed:false,queued:false,loading:false,visible:false};
+        this.jobs.set(card,job);
+        if(w.tags?.length){this.render(job,w.tags);}
+        if(grid.classList.contains('wide'))this.observer.observe(card);
+      },
+      render(job,tags){
+        job.box.replaceChildren();job.ready=true;job.failed=false;
+        if(!tags.length){
+          const message=document.createElement('span');message.className='catalog-tag-status';message.textContent='No tags listed';job.box.appendChild(message);
+        }else for(const tag of tags){
+          const button=document.createElement('button');button.type='button';button.className='tag';button.textContent=tag.name;button.dataset.tag=tag.name;
+          button.setAttribute('aria-label','Search '+tag.name);job.box.appendChild(button);
+        }
+        this.observer.unobserve(job.card);
+      },
+      enqueue(job){
+        if(!grid.classList.contains('wide')||job.ready||job.failed||job.loading||job.queued||!job.card.isConnected)return;
+        job.queued=true;this.queue.push(job);this.pump();
+      },
+      refresh(){
+        this.epoch++;this.queue.length=0;this.active=null;
+        for(const job of this.jobs.values()){
+          job.queued=false;job.loading=false;
+          if(!grid.classList.contains('wide')||job.ready){this.observer.unobserve(job.card);continue;}
+          this.observer.observe(job.card);
+          const bounds=job.card.getBoundingClientRect();
+          job.visible=job.card.isConnected&&bounds.top<innerHeight+250&&bounds.bottom>=-250;
+          if(job.visible)this.enqueue(job);
+        }
+      },
+      pump(){
+        if(this.active||!grid.classList.contains('wide')||document.hidden)return;
+        while(this.queue.length){
+          const job=this.queue.shift();job.queued=false;
+          if(job.ready||job.failed||!job.visible||!job.card.isConnected||!this.jobs.has(job.card))continue;
+          this.fill(job);return;
+        }
+      },
+      async fill(job){
+        const epoch=this.epoch;this.active=job;job.loading=true;
+        job.box.textContent='Loading tags…';job.box.setAttribute('aria-busy','true');
+        try{
+          const json=await network.request(CONFIG.API+'/w/'+job.wallpaper.id);
+          if(epoch!==this.epoch||!grid.classList.contains('wide')||!job.card.isConnected||!this.jobs.has(job.card))return;
+          const clean=normalizeWallpaper(json.data);
+          if(!clean||clean.id!==job.wallpaper.id)throw new NetworkError('Wallpaper tags could not be loaded.');
+          job.wallpaper=clean;app.cardIndex.set(clean.id,clean);this.render(job,clean.tags);
+        }catch(error){
+          if(epoch!==this.epoch||!grid.classList.contains('wide')||!job.card.isConnected||!this.jobs.has(job.card))return;
+          job.failed=true;const message=document.createElement('span');message.className='catalog-tag-status';message.textContent='Tags unavailable';
+          const retry=document.createElement('button');retry.type='button';retry.className='catalog-tag-retry';retry.textContent='Retry ↺';
+          retry.onclick=()=>{job.failed=false;this.enqueue(job);};job.box.replaceChildren(message,retry);
+        }finally{
+          if(epoch===this.epoch){job.loading=false;job.box.removeAttribute('aria-busy');if(this.active===job){this.active=null;this.pump();}}
+        }
+      },
+      clear(){
+        this.epoch++;this.queue.length=0;this.active=null;this.observer.disconnect();this.jobs.clear();
+      }
+    };
     function makeCard(w,index) {
       const card=document.createElement('article');card.className='card';card.dataset.id=w.id;card.style.setProperty('--accent',w.colors[0]||'#a780f9');
       const picture=document.createElement('div');picture.className='card-picture';
@@ -577,12 +667,18 @@
       const img=document.createElement('img');img.alt=w.category+' wallpaper · '+w.resolution;img.width=600;img.height=375;img.dataset.id=w.id;
       open.append(placeholder,img);const badge=document.createElement('span');badge.className='card-badge'+(w.dimension_x>=3840?' uhd':'');badge.textContent=w.dimension_x>=3840?'4K+':w.category.toUpperCase();
       const save=document.createElement('button');save.type='button';save.className='card-save';save.dataset.save=w.id;save.setAttribute('aria-label','Save wallpaper '+w.id);save.setAttribute('aria-pressed',String(app.saved.has(w.id)));save.innerHTML=icon('heart');
-      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML=icon('arrow');
-      picture.append(open,badge,save,cta);const body=document.createElement('div');body.className='card-body';
+      picture.append(open,badge,save);const body=document.createElement('div');body.className='card-body';
       const first=document.createElement('div');first.className='card-topline';const id=document.createElement('button');id.className='card-id';id.type='button';id.dataset.open=w.id;id.textContent='#'+w.id;
       const res=document.createElement('span');res.className='card-resolution';res.textContent=w.resolution;first.append(id,res);
       const last=document.createElement('div');last.className='card-bottomline';const palette=document.createElement('span');palette.className='card-colors';palette.setAttribute('aria-hidden','true');w.colors.forEach(c=>{const dot=document.createElement('span');dot.className='color-dot';dot.style.setProperty('--swatch',c);palette.appendChild(dot);});
-      const category=document.createElement('span');category.className='card-category';category.textContent=w.category+' / '+String(index+1).padStart(2,'0');last.append(palette,category);body.append(first,last);card.append(picture,body);
+      const category=document.createElement('span');category.className='card-category';category.textContent=w.category+' / '+String(index+1).padStart(2,'0');last.append(palette,category);body.append(first,last);
+      const details=document.createElement('div');details.className='catalog-details';
+      const label=document.createElement('div');label.className='catalog-label';label.textContent='TAGS / CLICK TO EXPLORE';
+      const tags=document.createElement('div');tags.className='catalog-tags';tags.setAttribute('role','group');tags.setAttribute('aria-label','Tags for wallpaper '+w.id);tags.textContent='Tags load in catalog view';
+      const actions=document.createElement('div');actions.className='catalog-actions';
+      const download=document.createElement('button');download.type='button';download.className='catalog-download';download.dataset.catalogDownload=w.id;download.setAttribute('aria-label','Download original wallpaper '+w.id);download.innerHTML=icon('download')+'<span>Download original</span>';
+      actions.appendChild(download);details.append(label,tags,actions);body.appendChild(details);card.append(picture,body);
+      catalogMetadata.watch(card,w);
       const attachImage=()=>{
         if(!img.isConnected)return;
         imageQueue.attach(img,imageSources(chooseThumb(w)),{onFailure:()=>{
@@ -788,6 +884,27 @@
     }
     function closeViewer() {$('viewerDialog').close();}
     function stepViewer(direction) {const index=app.items.findIndex(w=>w.id===app.view?.id);const next=app.items[index+direction];if(next)openViewer(next.id);}
+    async function downloadCatalogOriginal(id,button){
+      if(button.disabled)return;
+      const wallpaper=app.cardIndex.get(id);if(!wallpaper?.path)return;
+      const generation=app.generation,caption=button.querySelector('span');
+      button.disabled=true;button.setAttribute('aria-busy','true');caption.textContent='Downloading…';
+      try{
+        const blob=await network.request(wallpaper.path,undefined,'blob');
+        if(!button.isConnected||generation!==app.generation||!grid.classList.contains('wide'))return;
+        if(!blob.size||(wallpaper.file_size>0&&blob.size!==wallpaper.file_size))throw new NetworkError('The original file is incomplete.');
+        const mime=blob.type.toLowerCase();
+        const extension=mime.includes('png')?'png':mime.includes('webp')?'webp':mime.includes('gif')?'gif':mime.includes('avif')?'avif':'jpg';
+        const objectURL=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=objectURL;link.download='bizarre-vision-'+wallpaper.id+'.'+extension;link.hidden=true;
+        document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectURL),120000);
+        toast('Original '+extension.toUpperCase()+' sent to your browser. Check Downloads.');
+      }catch(error){
+        if(button.isConnected&&generation===app.generation)toast('Original download failed. Retry the button or open the wallpaper for more options.');
+      }finally{
+        if(button.isConnected){button.disabled=false;button.removeAttribute('aria-busy');caption.textContent='Download original';}
+      }
+    }
     async function downloadOriginal() {
       const w=app.view;if(!w?.path||w.purity==='nsfw'||$('downloadBtn').disabled)return;
       app.downloadAbort?.abort();const ctrl=new AbortController();app.downloadAbort=ctrl;const epoch=app.viewerEpoch;
@@ -843,7 +960,19 @@
     });
     $('resetFilters').onclick=()=>{restoreDefaults();syncFilters();};
     $('activeFilters').addEventListener('click',e=>{const b=e.target.closest('[data-remove-filter]');if(b){$(b.dataset.removeFilter).value='';syncFilters();}});
-    grid.addEventListener('click',e=>{const save=e.target.closest('[data-save]');if(save){toggleSaved(save.dataset.save);return;}if(e.target.closest('.image-retry'))return;const open=e.target.closest('[data-open]');if(open)openViewer(open.dataset.open);});
+    grid.addEventListener('click',e=>{
+      const download=e.target.closest('[data-catalog-download]');
+      if(download){downloadCatalogOriginal(download.dataset.catalogDownload,download);return;}
+      const tag=e.target.closest('.catalog-tags [data-tag]');
+      if(tag){
+        const name=tag.dataset.tag;restoreDefaults();
+        $('q').value=/\s/.test(name)?'+"'+name.replace(/"/g,'')+'"':'+'+name;
+        syncFilters();startSearch();$('catalog').scrollIntoView({behavior:'smooth'});return;
+      }
+      const save=e.target.closest('[data-save]');if(save){toggleSaved(save.dataset.save);return;}
+      if(e.target.closest('.image-retry'))return;
+      const open=e.target.closest('[data-open]');if(open)openViewer(open.dataset.open);
+    });
     $('blurToggle').onclick=()=>{setBlur(!app.blur);toast(app.blur?'Gallery blur on.':'Gallery blur off.');};
     $('helpBtn').onclick=()=>$('helpDialog').showModal();$('loreBtn').onclick=()=>$('helpDialog').showModal();
     $('networkBtn').onclick=openNetwork;$('helpNetworkBtn').onclick=()=>{$('helpDialog').close();openNetwork();};
