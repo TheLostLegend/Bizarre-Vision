@@ -1,1643 +1,663 @@
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07060b" />
-    <title>BIZARRE ★ VISION</title>
-    <meta
-      name="description"
-      content="Bizarre Vision — Wallhaven viewer with infinite scroll, API proxied, images with multi-proxy fallback."
-    />
-    <style>
-      /* =====================================================================
-         BIZARRE VISION — JoJo / Speedwagon Foundation inspired dark UI
-         ===================================================================== */
-
-      :root {
-        --bg: #07060b;
-        --surface: #0f0d16;
-        --surface-2: #161322;
-        --fg: #f4f1ff;
-        --muted: #8c86a3;
-        --border: rgba(255, 255, 255, 0.08);
-        --border-strong: rgba(255, 255, 255, 0.18);
-
-        /* JoJo palette: Stardust gold + Diamond violet + Golden Wind magenta */
-        --gold: #f5c542;
-        --gold-deep: #c28a1b;
-        --violet: #8b5cf6;
-        --magenta: #ec4899;
-        --foundation: #2dd4bf; /* Speedwagon Foundation teal accent */
-
-        --radius: 10px;
-        --display: Impact, "Arial Narrow Bold", "Haettenschweiler",
-          "Arial Black", system-ui, sans-serif;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: var(--bg);
-        color: var(--fg);
-      }
-
-      body {
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        -webkit-font-smoothing: antialiased;
-      }
-
-      ::selection {
-        background: var(--gold);
-        color: #000;
-      }
-
-      /* custom scrollbar */
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: #3a3452 transparent;
-      }
-
-      .viewer {
-        position: relative;
-        isolation: isolate;
-        min-height: 100vh;
-      }
-
-      /* ---------- atmospheric background ---------- */
-      .bg-fx {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        overflow: hidden;
-        background:
-          radial-gradient(
-            900px 500px at 8% -10%,
-            rgba(139, 92, 246, 0.22),
-            transparent 60%
-          ),
-          radial-gradient(
-            700px 480px at 100% 0%,
-            rgba(236, 72, 153, 0.14),
-            transparent 60%
-          ),
-          radial-gradient(
-            800px 500px at 50% 120%,
-            rgba(245, 197, 66, 0.09),
-            transparent 60%
-          ),
-          var(--bg);
-      }
-
-      /* manga halftone */
-      .bg-fx::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(
-          rgba(255, 255, 255, 0.07) 1px,
-          transparent 1.4px
-        );
-        background-size: 9px 9px;
-        mask-image: linear-gradient(180deg, #000, transparent 55%);
-        -webkit-mask-image: linear-gradient(180deg, #000, transparent 55%);
-      }
-
-      /* giant menacing sound effect */
-      .bg-fx .gogogo {
-        position: absolute;
-        right: -2vw;
-        bottom: 4vh;
-        font-size: clamp(120px, 22vw, 340px);
-        font-weight: 900;
-        line-height: 1;
-        letter-spacing: -0.05em;
-        color: transparent;
-        -webkit-text-stroke: 1px rgba(245, 197, 66, 0.1);
-        transform: rotate(-8deg);
-        user-select: none;
-        white-space: nowrap;
-      }
-
-      /* ---------- header ---------- */
-      .site-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 22px 24px 16px;
-        flex-wrap: wrap;
-      }
-
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .brand-star {
-        display: grid;
-        place-items: center;
-        width: 38px;
-        height: 38px;
-        font-size: 20px;
-        color: #1a1203;
-        background: linear-gradient(
-          135deg,
-          #ffe58a,
-          var(--gold) 55%,
-          var(--gold-deep)
-        );
-        clip-path: polygon(
-          50% 0,
-          62% 35%,
-          100% 38%,
-          70% 60%,
-          80% 100%,
-          50% 76%,
-          20% 100%,
-          30% 60%,
-          0 38%,
-          38% 35%
-        );
-        filter: drop-shadow(0 0 10px rgba(245, 197, 66, 0.55));
-      }
-
-      .title-link {
-        font-family: var(--display);
-        font-size: clamp(26px, 4.2vw, 40px);
-        font-style: italic;
-        font-weight: 400;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        line-height: 1;
-        text-decoration: none;
-        cursor: default;
-        color: var(--fg);
-        display: inline-block;
-        transform: skewX(-8deg);
-        background: linear-gradient(
-          180deg,
-          #ffffff 10%,
-          #f7d870 55%,
-          var(--gold-deep)
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        filter: drop-shadow(2px 2px 0 rgba(139, 92, 246, 0.85));
-      }
-
-      .title-link span {
-        background: linear-gradient(
-          180deg,
-          #ffd1ec,
-          var(--magenta) 60%,
-          #8b1d5c
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-
-      .logo-mark {
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: 0.1em;
-        color: var(--gold);
-        opacity: 0.8;
-        display: inline-block;
-        transform: rotate(-4deg);
-        animation: menace 0.18s steps(2) infinite;
-      }
-
-      @keyframes menace {
-        0% {
-          transform: translate(0, 0) rotate(-4deg);
-        }
-        50% {
-          transform: translate(1px, -1px) rotate(-3deg);
-        }
-        100% {
-          transform: translate(-1px, 1px) rotate(-5deg);
-        }
-      }
-
-      .header-tag {
-        flex: 1 1 auto;
-        text-align: center;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.32em;
-        color: var(--foundation);
-        opacity: 0.75;
-        text-transform: uppercase;
-      }
-
-      .header-tag::before,
-      .header-tag::after {
-        content: "";
-        display: inline-block;
-        width: 28px;
-        height: 1px;
-        background: currentColor;
-        vertical-align: middle;
-        margin: 0 12px;
-        opacity: 0.6;
-      }
-
-      @media (max-width: 760px) {
-        .header-tag {
-          order: 3;
-          flex-basis: 100%;
-        }
-      }
-
-      .header-actions {
-        display: flex;
-        gap: 8px;
-      }
-
-      /* ---------- form ---------- */
-      form#searchForm {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 12px 24px;
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        background: rgba(7, 6, 11, 0.72);
-        backdrop-filter: blur(14px) saturate(140%);
-        -webkit-backdrop-filter: blur(14px) saturate(140%);
-        border-top: 1px solid var(--border);
-        border-bottom: 1px solid var(--border);
-        box-shadow: 0 1px 0 rgba(245, 197, 66, 0.25);
-      }
-
-      input,
-      select,
-      button {
-        background: var(--surface);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 8px 12px;
-        font-size: 13px;
-        border-radius: 8px;
-        font-family: inherit;
-        transition:
-          border-color 0.15s ease,
-          background 0.15s ease,
-          color 0.15s ease,
-          transform 0.15s ease,
-          box-shadow 0.15s ease;
-      }
-
-      input::placeholder {
-        color: #5f5a74;
-      }
-
-      input:hover,
-      select:hover {
-        border-color: var(--border-strong);
-      }
-
-      input:focus,
-      select:focus {
-        outline: none;
-        border-color: var(--gold);
-        box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.15);
-      }
-
-      select {
-        appearance: none;
-        -webkit-appearance: none;
-        padding-right: 30px;
-        cursor: pointer;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23f5c542' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 11px center;
-      }
-
-      select option {
-        background: #12101b;
-        color: var(--fg);
-      }
-
-      button {
-        cursor: pointer;
-      }
-
-      button:hover {
-        border-color: var(--gold);
-        color: var(--gold);
-        background: var(--surface-2);
-      }
-
-      button:active {
-        transform: translateY(1px);
-      }
-
-      /* primary "Search" button — pose-style skew */
-      form#searchForm button[type="submit"] {
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 12px;
-        color: #1a1203;
-        border: none;
-        padding: 8px 22px;
-        background: linear-gradient(
-          135deg,
-          #ffe58a,
-          var(--gold) 50%,
-          var(--gold-deep)
-        );
-        transform: skewX(-8deg);
-        box-shadow: 0 6px 18px -6px rgba(245, 197, 66, 0.6);
-      }
-
-      form#searchForm button[type="submit"]:hover {
-        color: #1a1203;
-        background: linear-gradient(
-          135deg,
-          #fff1b0,
-          #ffd45c 50%,
-          var(--gold)
-        );
-        box-shadow: 0 8px 24px -4px rgba(245, 197, 66, 0.8);
-        transform: skewX(-8deg) translateY(-1px);
-      }
-
-      .blur-btn-active {
-        background: var(--gold) !important;
-        border-color: var(--gold) !important;
-        color: #1a1203 !important;
-      }
-
-      .query-input {
-        min-width: 20rem;
-        flex: 1 1 20rem;
-      }
-
-      @media (max-width: 640px) {
-        form#searchForm,
-        .site-header {
-          padding-left: 14px;
-          padding-right: 14px;
-        }
-        .query-input {
-          min-width: 12rem;
-          flex: 1 1 100%;
-        }
-      }
-
-      /* ---------- grid ---------- */
-      #grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-        gap: 14px;
-        padding: 20px 24px 8px;
-      }
-
-      @media (max-width: 640px) {
-        #grid {
-          padding: 12px 14px;
-          gap: 10px;
-          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        }
-      }
-
-      .card {
-        position: relative;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        cursor: pointer;
-        content-visibility: auto;
-        contain-intrinsic-size: 220px;
-        transition:
-          transform 0.2s ease,
-          border-color 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-
-      /* gold corner slash, like a manga panel accent */
-      .card::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--gold), var(--magenta));
-        transition: width 0.28s ease;
-        z-index: 2;
-      }
-
-      .card:hover {
-        transform: translateY(-4px) rotate(-0.4deg);
-        border-color: rgba(245, 197, 66, 0.6);
-        box-shadow:
-          0 14px 34px -12px rgba(139, 92, 246, 0.6),
-          0 0 0 1px rgba(245, 197, 66, 0.25);
-      }
-
-      .card:hover::after {
-        width: 100%;
-      }
-
-      .card img {
-        width: 100%;
-        display: block;
-        aspect-ratio: 16 / 9;
-        object-fit: cover;
-        background: var(--surface-2);
-        transition: transform 0.4s ease;
-      }
-
-      .card:hover img {
-        transform: scale(1.05);
-      }
-
-      .card .info {
-        padding: 8px 10px;
-        font-size: 11px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: var(--muted);
-        letter-spacing: 0.04em;
-        border-top: 1px solid var(--border);
-      }
-
-      .id-link {
-        border: 1px solid transparent;
-        padding: 2px 7px;
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--fg);
-        font-size: 10.5px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        border-radius: 999px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-
-      .id-link:hover {
-        background: var(--gold);
-        color: #1a1203;
-        border-color: var(--gold);
-      }
-
-      .blur-on .card img {
-        filter: blur(12px) grayscale(1);
-      }
-
-      .blur-on .card:hover img {
-        filter: blur(0);
-      }
-
-      /* ---------- skeleton / loader ---------- */
-      .skeleton {
-        min-height: 170px;
-        background: linear-gradient(
-          110deg,
-          var(--surface) 30%,
-          var(--surface-2) 50%,
-          var(--surface) 70%
-        );
-        background-size: 220% 100%;
-        animation: shimmer 1.3s linear infinite;
-      }
-
-      .skeleton::after {
-        display: none;
-      }
-
-      @keyframes shimmer {
-        from {
-          background-position: 130% 0;
-        }
-        to {
-          background-position: -90% 0;
-        }
-      }
-
-      #sentinel {
-        height: 1px;
-        margin-bottom: 120px;
-      }
-
-      .loader {
-        text-align: center;
-        padding: 18px;
-        color: var(--gold);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        opacity: 0.85;
-      }
-
-      .error-banner {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        margin: 14px 24px 0;
-        padding: 10px 14px;
-        border: 1px solid rgba(236, 72, 153, 0.4);
-        border-radius: var(--radius);
-        background: rgba(236, 72, 153, 0.1);
-        color: #ffb3d6;
-        font-size: 13px;
-      }
-
-      .error-banner button {
-        border-color: rgba(236, 72, 153, 0.5);
-        font-size: 12px;
-      }
-
-      /* ---------- footer ---------- */
-      footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        padding: 16px 24px 22px;
-        border-top: 1px solid var(--border);
-        font-size: 12px;
-        color: var(--muted);
-        flex-wrap: wrap;
-        background: linear-gradient(
-          180deg,
-          transparent,
-          rgba(139, 92, 246, 0.06)
-        );
-      }
-
-      .foundation-seal {
-        color: var(--foundation);
-        font-weight: 700;
-        letter-spacing: 0.2em;
-        font-size: 10px;
-        text-transform: uppercase;
-        opacity: 0.8;
-      }
-
-      .proxy-note {
-        opacity: 0.55;
-        font-size: 11px;
-      }
-
-      /* ---------- expand overlay ---------- */
-      .expand-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(4, 3, 8, 0.82);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 50;
-        padding: 12px;
-      }
-
-      .expand-overlay.visible {
-        display: flex;
-      }
-
-      .expanded-card {
-        position: relative;
-        background: var(--surface);
-        width: min(1100px, 96vw);
-        max-height: 94vh;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        border-radius: 16px;
-        border: 1px solid rgba(245, 197, 66, 0.35);
-        box-shadow:
-          0 0 0 1px rgba(0, 0, 0, 0.6),
-          0 30px 80px -20px rgba(139, 92, 246, 0.55),
-          0 0 60px -20px rgba(245, 197, 66, 0.4);
-      }
-
-      .expanded-img {
-        width: 100%;
-        display: block;
-        background: #000;
-      }
-
-      .expanded-content {
-        padding: 18px 20px 22px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-
-      .expanded-title {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 15px;
-      }
-
-      .expanded-title a {
-        font-family: var(--display);
-        font-style: italic;
-        font-weight: 400;
-        font-size: 22px;
-        color: var(--gold);
-        text-decoration: none;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .expanded-title a::before {
-        content: "★ ";
-        color: var(--magenta);
-      }
-
-      .expanded-title a:hover {
-        text-decoration: underline;
-        text-underline-offset: 4px;
-      }
-
-      .expanded-title button {
-        font-size: 18px;
-        line-height: 1;
-        padding: 4px 12px;
-        border-radius: 999px;
-      }
-
-      .meta-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 0 24px;
-        padding: 4px 14px;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-      }
-
-      .meta-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        color: var(--muted);
-        font-size: 12px;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .meta-row span {
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-size: 10.5px;
-        align-self: center;
-      }
-
-      .meta-row b {
-        color: var(--fg);
-        font-weight: 600;
-        text-align: right;
-      }
-
-      .color-strip {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .color-block,
-      .color-block-active {
-        width: 34px;
-        height: 34px;
-        cursor: pointer;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        transition:
-          transform 0.15s ease,
-          border-color 0.15s ease;
-      }
-
-      .color-block:hover {
-        transform: scale(1.12);
-        border-color: var(--fg);
-      }
-
-      .color-block-active {
-        border-color: var(--gold);
-        box-shadow:
-          0 0 0 3px rgba(245, 197, 66, 0.25),
-          0 0 14px rgba(245, 197, 66, 0.55);
-        transform: scale(1.08);
-      }
-
-      .tag-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .tag {
-        border: 1px solid var(--border-strong);
-        padding: 4px 12px;
-        font-size: 11.5px;
-        cursor: pointer;
-        color: var(--fg);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.03);
-        transition:
-          background 0.15s ease,
-          border-color 0.15s ease,
-          color 0.15s ease,
-          transform 0.15s ease;
-      }
-
-      .tag:hover {
-        border-color: var(--violet);
-        color: #d9ccff;
-        transform: translateY(-1px);
-      }
-
-      .tag.active {
-        background: linear-gradient(135deg, #ffe58a, var(--gold));
-        border-color: var(--gold);
-        color: #1a1203;
-        font-weight: 700;
-      }
-
-      /* ---------- help overlay ---------- */
-      #helpOverlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(4, 3, 8, 0.82);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 60;
-        padding: 12px;
-      }
-
-      #helpOverlay.visible {
-        display: flex;
-      }
-
-      .helpModal {
-        position: relative;
-        background: var(--surface);
-        border: 1px solid rgba(245, 197, 66, 0.35);
-        border-radius: 16px;
-        padding: 22px 26px;
-        max-width: 700px;
-        width: 100%;
-        max-height: 92vh;
-        overflow-y: auto;
-        box-shadow: 0 30px 80px -20px rgba(139, 92, 246, 0.55);
-      }
-
-      .helpModal::before {
-        content: "ゴゴゴ";
-        position: absolute;
-        top: 6px;
-        right: 70px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.2em;
-        color: var(--gold);
-        opacity: 0.5;
-      }
-
-      .helpTitle {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .helpModal h2 {
-        margin: 0;
-        font-family: var(--display);
-        font-style: italic;
-        font-weight: 400;
-        font-size: 28px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: var(--gold);
-      }
-
-      .helpModal h3 {
-        color: var(--fg);
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        margin: 20px 0 4px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .helpModal h3::before {
-        content: "★";
-        color: var(--magenta);
-        font-size: 11px;
-      }
-
-      .helpModal p {
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.55;
-        margin: 4px 0;
-      }
-
-      .helpModal .close {
-        border-radius: 999px;
-        padding: 4px 12px;
-        font-size: 18px;
-        line-height: 1;
-      }
-
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        list-style: none;
-        padding: 0;
-        margin: 8px 0;
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      .chips code {
-        background: var(--bg);
-        border: 1px solid var(--border-strong);
-        color: var(--gold);
-        padding: 2px 9px;
-        font-size: 12px;
-        border-radius: 6px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-
-      .color-dot {
-        display: inline-block;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        margin-right: 6px;
-        vertical-align: middle;
-        border: 1px solid #555;
-      }
-
-      .recs {
-        margin-top: 20px;
-        padding: 12px 14px;
-        border: 1px dashed rgba(45, 212, 191, 0.5);
-        border-radius: var(--radius);
-        background: rgba(45, 212, 191, 0.06);
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      .recs a {
-        color: var(--foundation);
-        font-weight: 700;
-        text-decoration: none;
-      }
-
-      .recs a:hover {
-        text-decoration: underline;
-        text-underline-offset: 3px;
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      /* ---------- reduced motion ---------- */
-      @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-          animation: none !important;
-          transition: none !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="viewer">
-      <div class="bg-fx" aria-hidden="true">
-        <span class="gogogo">ゴゴゴ</span>
-      </div>
-
-      <header class="site-header">
-        <div class="brand">
-          <span class="brand-star" aria-hidden="true">★</span>
-          <a href="" class="title-link" id="titleLink">
-            BIZARRE <span>VISION</span>
-          </a>
-          <span class="logo-mark">ゴゴゴ</span>
-        </div>
-        <div class="header-tag">Speedwagon Foundation · Wallpaper Archive</div>
-        <div class="header-actions">
-          <button id="blurToggle" type="button">Blur</button>
-          <button id="helpBtn" type="button">?</button>
-        </div>
-      </header>
-
-      <form id="searchForm">
-        <input class="query-input" name="q" placeholder="Query" />
-        <select name="categories">
-          <option value="111" selected>All</option>
-          <option value="100">Common</option>
-          <option value="010">Anime</option>
-          <option value="001">People</option>
-        </select>
-        <select name="sorting">
-          <option value="toplist" selected>Toplist</option>
-          <option value="date_added">Date added</option>
-          <option value="relevance">Relevance</option>
-          <option value="views">Views</option>
-          <option value="favorites">Favorites</option>
-          <option value="random">Random</option>
-        </select>
-        <select name="topRange">
-          <option value="1d">1d</option>
-          <option value="3d">3d</option>
-          <option value="1w">1w</option>
-          <option value="1M">1M</option>
-          <option value="3M">3M</option>
-          <option value="6M" selected>6M</option>
-          <option value="1y">1y</option>
-          <option value="2y">2y</option>
-        </select>
-        <select name="purity">
-          <option value="100" selected>sfw</option>
-          <option value="110">no way!</option>
-        </select>
-        <input name="atleast" placeholder="Min (1920x1080)" />
-        <select name="colors">
-          <option value="" selected>All colors</option>
-          <option value="660000">DkRed</option>
-          <option value="990000">Red</option>
-          <option value="cc0000">Vivid Red</option>
-          <option value="cc3333">Crimson</option>
-          <option value="ea4c88">Rose</option>
-          <option value="993399">Purple</option>
-          <option value="663399">Violet</option>
-          <option value="333399">Indigo</option>
-          <option value="0066cc">Blue</option>
-          <option value="0099cc">Sky Blue</option>
-          <option value="66cccc">Turquoise</option>
-          <option value="77cc33">Lime</option>
-          <option value="669900">Olive</option>
-          <option value="336600">DkGreen</option>
-          <option value="666600">Drab</option>
-          <option value="999900">Moss</option>
-          <option value="cccc33">Mustard</option>
-          <option value="ffff00">Yellow</option>
-          <option value="ffcc33">Gold</option>
-          <option value="ff9900">Orange</option>
-          <option value="ff6600">Pumpkin</option>
-          <option value="cc6633">Rust</option>
-          <option value="996633">Tan</option>
-          <option value="663300">Brown</option>
-          <option value="000000">Black</option>
-          <option value="999999">Gray</option>
-          <option value="cccccc">LtGray</option>
-          <option value="ffffff">White</option>
-          <option value="424153">Charcoal</option>
-        </select>
-        <button type="submit">Search</button>
-      </form>
-
-      <div id="errorBanner" class="error-banner hidden">
-        <span id="errorText"></span>
-        <button id="retryBtn" type="button">Retry</button>
-      </div>
-
-      <div id="grid"></div>
-      <div id="sentinel"></div>
-
-      <div id="loadingMore" class="loader hidden">
-        ゴゴゴ LOADING MORE ゴゴゴ
-      </div>
-      <div id="endMessage" class="loader hidden">
-        ★ The World has stopped — no more wallpapers ★
-      </div>
-      <div id="noResults" class="loader hidden">
-        やれやれ… NO RESULTS — try different filters
-      </div>
-
-      <footer>
-        <span id="pageInfo">Page 1 / 1</span>
-        <span class="foundation-seal">★ Speedwagon Foundation ★</span>
-        <span class="proxy-note">
-          API: server proxy · images: direct → allorigins → local
-        </span>
-        <span id="loadedCount">0 loaded</span>
-      </footer>
-
-      <!-- Expand overlay -->
-      <div id="expandOverlay" class="expand-overlay"></div>
-
-      <!-- Help overlay -->
-      <div id="helpOverlay">
-        <div class="helpModal">
-          <div class="helpTitle">
-            <h2>Search tips</h2>
-            <button class="close" type="button">×</button>
-          </div>
-          <p class="intro">
-            Fine-tune results using tags, filters and sorting. Most fields are
-            optional.
-          </p>
-          <section>
-            <h3>Query</h3>
-            <p>Use keywords or tags to describe what you want.</p>
-            <ul class="chips">
-              <li><code>tag</code></li>
-              <li><code>-exclude</code></li>
-              <li><code>+required</code></li>
-              <li><code>@user</code></li>
-            </ul>
-          </section>
-          <section>
-            <h3>Sorting</h3>
-            <p><code>Toplist</code> works best with a time range.</p>
-          </section>
-          <section>
-            <h3>Quality filters</h3>
-            <p>Limit results by minimum resolution or dominant color.</p>
-            <ul class="chips">
-              <li><code>1920x1080</code></li>
-              <li>
-                <span class="color-dot" style="background: #0099cc"></span>Blue
-              </li>
-              <li>
-                <span class="color-dot" style="background: #77cc33"></span>Lime
-              </li>
-              <li>
-                <span class="color-dot" style="background: #ffffff"></span>White
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h3>Navigation</h3>
-            <p>Scroll down — new wallpapers load automatically.</p>
-          </section>
-          <section>
-            <h3>Why it works</h3>
-            <p>
-              Wallhaven's API sends no CORS headers, so the browser cannot call
-              it directly. This app proxies the API through the server and loads
-              images directly from the CDN with fallbacks to online proxies,
-              then to the local image proxy.
-            </p>
-          </section>
-          <div class="recs">
-            <span>
-              Extra inspiration →
-              <a
-                href="https://github.com/the-speedwagon-foundation/humanitarian-cargo/archive/refs/heads/main.zip"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Foundation recommendations
-              </a>
-            </span>
-          </div>
-        </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101014">
+  <meta name="description" content="Bizarre Vision — an extraordinary, online wallpaper discovery experience. Find your next Stand on Wallhaven.">
+  <meta name="referrer" content="no-referrer">
+  <title>Bizarre Vision — Find your next Stand.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23dcfa53'/%3E%3Cpath d='M32 7l6 17 18 8-18 7-6 18-7-18-18-7 18-8z' fill='%23101014'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://th.wallhaven.cc">
+  <link rel="preconnect" href="https://wallhaven.cc">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=DM+Sans:wght@400;450;500;550;600;650;700;750;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" defer></script>
+  <style>
+    :root{color-scheme:dark;--bg:#101014;--panel:#17171d;--panel2:#1f1f27;--line:#303038;--text:#f4f2ec;--muted:#96939f;--lime:#dcfa53;--purple:#a780f9;--pink:#ff79ac;--display:'Barlow Condensed',Impact,'Arial Narrow',sans-serif;--sans:'DM Sans',system-ui,sans-serif;--mono:'Space Mono',monospace;--radius:9px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:100px}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;overflow-x:hidden}body:has(dialog[open]){overflow:hidden}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer;color:inherit}button:disabled{cursor:wait;opacity:.4}button,a,input,select,summary{outline-offset:5px}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--lime)}input:focus-visible,select:focus-visible{outline:2px solid var(--purple)}button{border:0}a{color:inherit;text-decoration:none}button svg{pointer-events:none}button{transition:background .16s,color .16s,border-color .16s,transform .16s}img{display:block;max-width:100%}[hidden]{display:none!important}::selection{background:var(--lime);color:var(--bg)}.icon{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.mono{font-family:var(--mono)}.muted{color:var(--muted)}.lime{color:var(--lime)}.wrap{max-width:1500px;margin:auto;padding:0 48px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.skip-link{position:fixed;top:-80px;left:20px;background:var(--lime);color:#101014;padding:12px;z-index:100}.skip-link:focus{top:12px}
+    .site-header{height:82px;border-bottom:1px solid var(--line);background:rgba(16,16,20,.96);position:sticky;top:0;z-index:30;backdrop-filter:blur(16px)}.header-inner{height:100%;display:flex;align-items:center;gap:36px}.brand{display:flex;align-items:center;gap:11px;flex-shrink:0}.brand-mark{width:43px;height:43px;background:var(--lime);color:var(--bg);display:grid;place-items:center;transform:rotate(-8deg);border-radius:6px;box-shadow:3px 3px 0 #6b7934}.brand-mark svg{width:27px;height:27px;fill:currentColor}.brand-name{font-size:17px;font-weight:800;letter-spacing:-.6px;line-height:1.1}.brand-name span{color:var(--lime)}.brand-sub{font:8px var(--mono);letter-spacing:1.7px;color:#a5a1ae;margin-top:5px}.primary-nav{display:flex;align-items:center;gap:29px;margin-left:auto;height:100%}.nav-link{position:relative;background:none;font-size:11px;letter-spacing:.8px;color:var(--muted);height:100%;font-weight:700;display:flex;align-items:center;gap:7px;white-space:nowrap}.nav-link:hover{color:var(--text)}.nav-link.active{color:var(--lime)}.nav-link.active:after{content:'';position:absolute;bottom:0;height:3px;background:var(--lime);left:0;right:0}.nav-count{font:9px var(--mono);border:1px solid #45414e;padding:1px 5px;border-radius:3px;min-width:20px;text-align:center}.header-actions{display:flex;align-items:center;gap:9px;padding-left:23px;border-left:1px solid var(--line)}.connection-btn{display:flex;align-items:center;gap:8px;background:none;font:9px var(--mono);text-transform:uppercase;letter-spacing:.4px;color:#b7b3be;padding:8px 4px}.signal-dot{width:6px;height:6px;border-radius:50%;background:#777382;flex-shrink:0}.connection-btn[data-state="online"] .signal-dot{background:var(--lime);box-shadow:0 0 8px #dcfa5340}.connection-btn[data-state="loading"] .signal-dot{background:var(--purple);animation:pulse 1.5s infinite}.connection-btn[data-state="error"] .signal-dot,.connection-btn[data-state="limited"] .signal-dot{background:var(--pink)}.icon-btn{display:grid;place-items:center;width:35px;height:35px;border:1px solid var(--line);border-radius:6px;background:transparent;color:#d6d2de;flex-shrink:0}.icon-btn:hover{background:var(--panel2);border-color:#6e657f}.icon-btn[aria-pressed="true"]{color:var(--bg);background:var(--lime);border-color:var(--lime)}.help-icon{font-family:var(--mono);font-size:17px}.blur-shortcut{display:none}
+    .hero{display:grid;grid-template-columns:1.12fr 1fr;gap:40px;align-items:center;min-height:345px;padding:36px 0 37px;position:relative}.hero-eyebrow{display:flex;align-items:center;gap:9px;color:var(--muted);font:9px var(--mono);letter-spacing:1.9px;margin-bottom:15px}.tiny-star{color:var(--lime);font:24px/1 var(--display);line-height:14px}.hero h1{font:900 clamp(64px,7.3vw,110px)/.89 var(--display);letter-spacing:-1.8px;margin:0;text-transform:uppercase}.hero h1 span{display:block}.hero h1 .bizarre{color:var(--lime);font-style:italic;display:inline-block;position:relative;padding-right:14px}.hero h1 .bizarre:after{content:'';position:absolute;right:-24px;top:6px;height:49%;width:3px;background:var(--purple);transform:skew(-13deg) rotate(18deg)}.hero-bottom{margin-top:20px;display:flex;gap:24px;align-items:center}.hero-copy p{color:#b2aebc;font-size:13px;line-height:1.7;margin:0;max-width:400px}.hero-link{display:flex;align-items:center;gap:13px;font-size:10px;font-weight:700;letter-spacing:.4px;white-space:nowrap;color:var(--text);border-bottom:1px solid #65606e;padding:9px 0;background:none}.hero-link:hover{color:var(--lime);border-color:var(--lime)}.hero-link .icon{width:16px;height:16px}.hero-art{height:282px;position:relative;isolation:isolate;max-width:540px;width:100%;justify-self:end}.art-dots{position:absolute;inset:0 0 0 0;background-image:radial-gradient(#4f455e 1px,transparent 1px);background-size:7px 7px;mask-image:radial-gradient(ellipse,black 25%,transparent 70%);opacity:.5;z-index:-2}.art-burst{position:absolute;width:280px;height:280px;left:105px;top:2px;background:var(--purple);clip-path:polygon(50% 0,59% 26%,83% 6%,77% 36%,100% 33%,83% 51%,100% 69%,73% 68%,84% 96%,58% 77%,46% 100%,39% 74%,12% 93%,22% 65%,0 57%,26% 45%,0 25%,31% 27%,26% 1%,44% 22%);transform:rotate(-10deg);opacity:.9;z-index:-1}.poster{position:absolute;margin:0;padding:6px;background:#eeeadd;box-shadow:8px 9px 0 #0005;border:1px solid #000;overflow:hidden}.poster-back{width:215px;height:200px;left:10px;top:49px;transform:rotate(-13deg);background:#d1b5ed}.poster-main{width:332px;height:219px;right:22px;top:29px;transform:rotate(5deg);z-index:2}.poster .picture{height:100%;width:100%;position:relative;background:linear-gradient(135deg,#51445d,#272037);overflow:hidden}.poster img{width:100%;height:100%;object-fit:cover;position:relative;z-index:1;opacity:0;transition:opacity .3s}.poster img.is-loaded{opacity:1}.poster .poster-placeholder{position:absolute;inset:0;display:grid;place-items:center;font:700 58px/.85 var(--display);color:#ceb4ec;transform:rotate(-8deg);text-align:center;letter-spacing:-1px}.poster-main .picture:after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#120a2090,transparent 50%);z-index:2;pointer-events:none}.poster-label{position:absolute;left:13px;bottom:13px;font:700 9px var(--mono);color:white;z-index:3;letter-spacing:1px}.poster-serial{position:absolute;top:10px;right:10px;background:#121015a8;color:#fff;padding:3px 7px;font:8px var(--mono);z-index:3;border:1px solid #ffffff40}.hero-sticker{position:absolute;left:21px;top:4px;width:75px;height:75px;background:var(--lime);border:2px solid var(--bg);border-radius:50%;transform:rotate(-13deg);display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--bg);font-weight:900;line-height:1;z-index:4;outline:1px dashed var(--bg);outline-offset:-5px}.hero-sticker b{font:900 26px var(--display)}.hero-sticker span{font:7px var(--mono);letter-spacing:1px;margin-top:1px}.menacing{position:absolute;right:-4px;top:0;writing-mode:vertical-rl;font:900 35px/1 var(--sans);color:var(--purple);letter-spacing:-4px;text-shadow:2px 2px 0 #101014,-1px -1px 0 #d1b8ff;transform:rotate(6deg);z-index:5}.art-caption{position:absolute;right:18px;bottom:0;background:var(--lime);color:var(--bg);border:2px solid var(--bg);padding:8px 13px;font:700 10px var(--mono);letter-spacing:.3px;transform:rotate(-5deg);z-index:6;box-shadow:3px 4px 0 #0005}.art-caption span{margin-right:7px}.art-footnote{position:absolute;left:40px;bottom:0;font:8px var(--mono);color:#9b8eae;letter-spacing:1px;transform:rotate(-3deg)}.art-arrow{position:absolute;left:0;top:-1px;width:74px;height:55px;transform:rotate(-20deg);color:#f1f0df}.ribbon{background:var(--lime);color:#15170b;border-top:1px solid #f3ffb5;border-bottom:1px solid #f3ffb5;display:flex;gap:34px;justify-content:center;padding:8px 0;white-space:nowrap;overflow:hidden;margin:0 -8px;transform:rotate(-1deg);font:700 10px var(--mono);letter-spacing:1.1px;position:relative;z-index:1}.ribbon span{display:inline-flex;gap:32px;align-items:center}.ribbon b{font:900 18px/12px var(--display)}
+    .catalog{padding-top:39px;scroll-margin-top:98px}.search-panel{background:#17171c;border:1px solid #34303c;border-radius:9px;padding:14px;box-shadow:0 8px 30px #00000016}.search-row{display:flex;align-items:center;gap:12px}.search-box{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:#101014;border:1px solid #35323c;padding:0 14px;height:48px;border-radius:6px}.search-box:focus-within{border-color:var(--purple)}.search-box>.icon{color:var(--lime);width:20px;height:20px}.search-box input{background:none;border:none;outline:none;color:var(--text);width:100%;min-width:0;font-size:13px}.search-box input::placeholder{color:#777280}.search-key{color:#6b6773;font:10px var(--mono);border:1px solid #39353f;padding:1px 5px;border-radius:3px}.field-select{color:#d3ceda;background:#101014;border:1px solid #35323c;border-radius:6px;height:48px;padding:0 34px 0 13px;font-size:12px;min-width:158px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 5 5-5' fill='none' stroke='%23958e9f'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}.filter-toggle{display:flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 17px;background:#27232f;border:1px solid #403649;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}.filter-toggle:hover,.filter-toggle[aria-expanded="true"]{border-color:var(--purple);color:#d0b8ff}.filter-badge{background:var(--purple);color:#101014;font:9px var(--mono);border-radius:3px;padding:1px 4px}.primary-btn{display:flex;align-items:center;justify-content:center;gap:12px;background:var(--lime);color:#15150d;font-size:12px;font-weight:800;border:1px solid var(--lime);border-radius:6px;height:48px;padding:0 22px;white-space:nowrap}.primary-btn:hover{background:#eaff87;border-color:#eaff87;transform:translateY(-1px)}.primary-btn .icon{width:16px;height:16px}.filter-bottom{display:flex;gap:15px;align-items:center;justify-content:space-between;margin-top:13px}.category-tabs{display:flex;align-items:center;gap:5px}.category-tab{background:none;color:#96909f;font-size:11px;padding:6px 12px;border-radius:5px;display:flex;align-items:center;gap:6px;white-space:nowrap}.category-tab .category-symbol{font-size:13px;opacity:.8}.category-tab:hover{background:#26232e;color:#e2dae9}.category-tab[aria-pressed="true"]{background:#303222;color:var(--lime);font-weight:600}.filter-bottom-right{display:flex;align-items:center;gap:14px}.purity-label{display:flex;align-items:center;gap:6px;font:9px var(--mono);color:#aaa4b4;white-space:nowrap}.purity-label .icon{width:12px;height:12px;color:var(--lime)}.quality-toggle{background:none;color:#96909f;font:10px var(--mono);border:1px solid #37323f;border-radius:4px;padding:4px 7px;white-space:nowrap}.quality-toggle[aria-pressed="true"]{background:#2e263b;border-color:var(--purple);color:#d5b8ff}.filter-divider{height:17px;width:1px;background:#393240}.density-toggle{display:flex;gap:4px}.density-btn{display:grid;place-items:center;background:none;color:#756b84;border-radius:4px;width:28px;height:26px}.density-btn[aria-pressed="true"]{color:var(--text);background:#37303f}.density-btn .icon{width:15px;height:15px}.advanced-filters{border-top:1px solid #302938;margin-top:16px;padding-top:16px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}.filter-field{display:flex;flex-direction:column;gap:7px;font:9px var(--mono);color:#a9a0b4;letter-spacing:.5px}.filter-field select,.filter-field input{height:37px;border:1px solid #39313f;background:#111015;color:#e9e1f0;border-radius:4px;width:100%;min-width:0;font:12px var(--sans);padding:0 9px}.filter-field input:invalid{border-color:var(--pink)}.filter-note{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#857c93}.text-btn{padding:0;background:none;color:var(--purple);font-size:11px;text-decoration:underline;text-underline-offset:3px}.advanced-filters .purity-select{margin:0}.filter-applied{margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.filter-applied:empty{display:none}.applied-chip{background:#2c2436;border:1px solid #564369;padding:3px 8px;font:10px var(--mono);border-radius:4px;display:flex;align-items:center;gap:8px;color:#d9bdfb}.applied-chip .icon{width:12px;height:12px}.collection-note{padding:14px 0 0;color:var(--muted);font-size:12px}
+    .feed-head{display:flex;justify-content:space-between;align-items:center;margin:25px 0 17px;gap:16px}.feed-title{display:flex;gap:10px;align-items:center}.feed-title>.icon{color:var(--lime);width:20px;height:20px;fill:currentColor;stroke:none}.feed-title h2{font-size:16px;font-weight:750;letter-spacing:.1px;margin:0}.feed-title h2 .muted{font-weight:400;font-size:11px;margin-left:8px}.feed-tools{display:flex;align-items:center;gap:12px}.feed-source{font:8px var(--mono);color:#938a9f;letter-spacing:.6px;display:flex;align-items:center;gap:7px}.feed-source .signal-dot{height:4px;width:4px;background:var(--purple)}.feed-tools .icon-btn{width:28px;height:28px;border-color:#39303f}.feed-tools .icon{width:14px;height:14px}.wallpaper-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 18px;min-height:0}.wallpaper-grid.wide{grid-template-columns:repeat(2,minmax(0,1fr))}.card{min-width:0;position:relative;background:#18171d;border:1px solid #302c36;border-radius:8px;overflow:hidden;contain:layout style;content-visibility:auto;contain-intrinsic-size:auto 258px;transition:border-color .18s,transform .18s;box-shadow:0 4px 10px #00000012}.card:hover{border-color:#75608c;transform:translateY(-3px)}.card-picture{aspect-ratio:16/10;position:relative;overflow:hidden;background:linear-gradient(125deg,#282132,#332a42,#1f2028)}.card-open{padding:0;background:none;display:block;width:100%;height:100%;text-align:left;position:relative}.card-open:focus-visible{outline-offset:-4px;outline:2px solid var(--lime)}.card-open img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s,transform .35s;position:relative;z-index:1}.card-open img.is-loaded{opacity:1}.card:hover .card-open img{transform:scale(1.035)}.image-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#6b567b;font:800 70px var(--display);opacity:.4}.image-placeholder:before,.image-placeholder:after{content:'';position:absolute;width:140%;height:1px;top:50%;left:-20%;background:#8d72a522;transform:rotate(-28deg)}.image-placeholder:after{transform:rotate(28deg)}.card-picture:after{content:'';position:absolute;left:0;right:0;bottom:0;height:55%;pointer-events:none;background:linear-gradient(transparent,#0006)}.card-badge{position:absolute;top:12px;left:12px;font:8px var(--mono);padding:4px 7px;border:1px solid #ffffff29;border-radius:4px;background:#111015b8;color:#f2eaf9;letter-spacing:.3px;pointer-events:none;z-index:3;backdrop-filter:blur(6px)}.card-badge.uhd{background:var(--lime);color:var(--bg);border-color:var(--lime);font-weight:700}.card-save{position:absolute;top:10px;right:10px;z-index:4;width:29px;height:29px;border-radius:5px;background:#101014aa;border:1px solid #ffffff25;color:#eee5f5;display:grid;place-items:center;backdrop-filter:blur(6px)}.card-save:hover{background:var(--lime);color:var(--bg)}.card-save .icon{width:15px;height:15px}.card-save[aria-pressed="true"]{background:var(--lime);color:var(--bg);border-color:var(--lime)}.card-save[aria-pressed="true"] .icon{fill:currentColor}.card-cta{position:absolute;bottom:12px;right:12px;z-index:2;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(5px);font:8px var(--mono);color:#fff;transition:opacity .2s,transform .2s}.card:hover .card-cta,.card:focus-within .card-cta{opacity:1;transform:none}.card-cta .icon{width:12px;height:12px}.card-body{padding:11px 12px 10px}.card-topline{display:flex;justify-content:space-between;align-items:center;gap:8px}.card-id{font:9px var(--mono);color:#d1c5df;background:none;padding:0;text-align:left}.card-id:hover{color:var(--lime)}.card-resolution{font:8px var(--mono);color:#92869f}.card-bottomline{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:10px}.card-colors{display:flex;gap:3px}.color-dot{display:block;width:9px;height:5px;border-radius:1px;background:var(--swatch);border:1px solid #ffffff15}.card-category{color:#6e647a;font:8px var(--mono);letter-spacing:.3px;text-transform:uppercase}.card .image-failure{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:#a690b5;font:9px var(--mono);z-index:2;background:#1c1524}.card .image-failure .icon{width:24px;height:24px}.image-retry{background:#33233f;border:1px solid #5b3f6b;border-radius:4px;font:10px var(--sans);padding:5px 9px;color:#e1c0fa;pointer-events:auto;position:relative;z-index:5}.skeleton{pointer-events:none}.skeleton .card-picture{background:#24202b;animation:pulse 1.5s infinite}.skeleton .card-picture .skeleton-star{width:50px;height:50px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-10deg);color:#423549}.skeleton .skeleton-line{display:inline-block;width:70px;height:6px;background:#3b3044;border-radius:2px}.skeleton .skeleton-line.short{width:47px}.skeleton .card-topline .skeleton-line{animation:pulse 1.5s infinite}.load-region{padding:29px 0 31px;min-height:98px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center}.load-label{font:9px var(--mono);color:#8b8198;letter-spacing:1px;display:flex;align-items:center;gap:9px}.loading-star{display:inline-block;width:13px;height:13px;color:var(--purple);animation:spin 3s linear infinite}.load-region.error{border:1px solid #50354f;background:#231825;border-radius:8px;padding:24px;margin:24px 0}.load-region.error h3{font-family:var(--display);font-size:29px;margin:0;color:#ecd4f5}.load-region.error p{font-size:12px;color:#b19abc;max-width:600px;margin:0}.load-region .primary-btn{height:38px;font-size:11px;margin-top:6px}.load-end{color:#bbaaef;font:10px var(--mono);letter-spacing:.7px}.load-end:before,.load-end:after{content:'—';margin:0 12px;color:#66556e}.empty-state{text-align:center;padding:50px 20px 65px;border:1px dashed #493952;border-radius:8px;margin-bottom:24px}.empty-state .empty-star{font-size:45px;color:var(--purple);line-height:1.3}.empty-state h3{font:800 40px var(--display);margin:5px 0 10px}.empty-state p{font-size:13px;color:#b09cbd;max-width:420px;margin:0 auto 20px}.empty-state .primary-btn{margin:auto;display:inline-flex;height:40px}.sentinel{height:1px;width:100%;margin:0}.site-footer{border-top:1px solid var(--line);background:#0c0c10;padding:24px 0 27px}.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}.footer-brand{font:800 20px var(--display);letter-spacing:.3px}.footer-brand span{color:var(--lime)}.footer-copy{font-size:9px;color:#81778c;margin-top:4px}.footer-center{color:#685773;font:700 23px var(--sans);letter-spacing:-2px;text-shadow:1px 1px #2b2133}.footer-right{display:flex;gap:19px;align-items:center;font:9px var(--mono);color:#a08dab}.footer-right a:hover{color:var(--lime)}.footer-right button{background:none;padding:0;color:#b29cbb;display:flex;align-items:center;gap:8px;font:9px var(--mono)}.footer-right .icon{width:13px;height:13px}.no-js{padding:30px;margin:30px;border:1px solid var(--purple);color:var(--lime)}
+    dialog{padding:0;color:var(--text);background:#17131d;border:1px solid #51425c;border-radius:12px;max-height:calc(100dvh - 48px);width:min(700px,calc(100vw - 36px));box-shadow:0 35px 120px #0009;overscroll-behavior:contain}dialog::backdrop{background:#08070cdb;backdrop-filter:blur(7px)}.dialog-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 24px;border-bottom:1px solid #3a2a44}.dialog-heading{font:700 11px var(--mono);letter-spacing:1px;color:#cab3db}.dialog-heading .lime{margin-right:10px}.dialog-body{padding:25px}.dialog-title{font:800 46px/.98 var(--display);margin:0 0 12px}.dialog-title em{font-style:italic;color:var(--lime)}.dialog-intro{font-size:13px;line-height:1.8;color:#bba7c7;margin:0 0 24px}.help-section{border-top:1px solid #38283f;padding:17px 0 8px}.help-section h3{margin:0 0 10px;font-size:12px;color:#e2c8f0;font-weight:700}.help-section p{font-size:12px;color:#b19abb;line-height:1.8;margin:6px 0 11px}.syntax-examples{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.syntax-examples div{background:#211729;border:1px solid #3e2b49;border-radius:5px;padding:8px;font-size:11px;color:#a68daf}.syntax-examples code{color:#dfc4ef;margin-right:6px;font-size:11px}.keyboard-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#b4a0bd;font-size:11px}.keyboard-row span{display:flex;gap:7px;align-items:center}kbd{font:9px var(--mono);padding:3px 6px;border:1px solid #54415f;border-bottom-width:3px;border-radius:4px;color:#d6b6e7}.network-intro{display:flex;gap:12px;align-items:flex-start;padding:13px;border:1px solid #46344f;background:#251b2d;border-radius:6px;margin:0 0 18px}.network-intro .icon{color:var(--purple);margin-top:3px}.network-intro p{color:#b6a1c2;font-size:11px;line-height:1.7;margin:0}.network-routes{display:flex;flex-direction:column;gap:7px}.route-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:11px 13px;background:#201725;border:1px solid #392840;border-radius:6px;font-size:11px}.route-row strong{font-weight:600}.route-row small{font:9px var(--mono);color:#82718d;display:block;margin-top:3px}.route-state{font:9px var(--mono);color:#a58cb7;text-align:right}.route-state.ok{color:var(--lime)}.route-state.failed{color:var(--pink)}.network-form{margin-top:20px;display:grid;grid-template-columns:1fr;gap:8px}.network-form label{font:10px var(--mono);color:#bfa7ce}.network-form select,.network-form input{height:39px;width:100%;min-width:0;background:#100c15;border:1px solid #493551;border-radius:5px;color:#dcc2ec;padding:0 10px;font:12px var(--sans)}.network-form .custom-label{margin-top:7px}.network-form .primary-btn{height:39px;margin-top:8px}.network-note{font-size:11px;line-height:1.8;color:#9d85aa;margin:17px 0 0}.network-privacy{border-top:1px solid #3d2a45;padding-top:13px;margin-top:16px;color:#a68ab4;font-size:10px;line-height:1.7}.viewer-dialog{width:min(1190px,calc(100vw - 38px));max-width:none}.viewer-dialog .dialog-head{padding:12px 18px}.viewer-controls{display:flex;align-items:center;gap:7px}.viewer-controls .icon-btn{width:31px;height:31px}.viewer-dialog .dialog-heading{font-size:9px}.viewer-layout{display:grid;grid-template-columns:minmax(0,1fr) 270px;min-height:430px}.viewer-stage{position:relative;display:flex;align-items:center;justify-content:center;background-color:#0c090f;background-image:radial-gradient(#302437 1px,transparent 1px);background-size:9px 9px;min-width:0;height:min(68dvh,620px);overflow:hidden}.viewer-image{object-fit:contain;max-height:100%;max-width:100%;opacity:0;transition:opacity .25s}.viewer-image.is-loaded{opacity:1}.viewer-stage.loading:after{content:'SUMMONING YOUR VISION…';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:10px var(--mono);color:#c39bdf;white-space:nowrap;letter-spacing:1px}.viewer-stage.loading .viewer-placeholder{animation:pulse 1.5s infinite;color:#6f5087;font:900 80px var(--display)}.viewer-placeholder{position:absolute}.viewer-image-error{position:absolute;inset:0;background:#0f0b14ec;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;text-align:center;font-size:12px;color:#c1a3d0;padding:25px}.viewer-image-error .icon{color:var(--purple);width:32px;height:32px}.viewer-preview-label{position:absolute;bottom:12px;left:14px;z-index:3;padding:5px 8px;background:#0f0b14c9;border:1px solid #584369;border-radius:4px;font:8px var(--mono);color:#c8b2d8}.viewer-sidebar{padding:23px 20px;border-left:1px solid #3b2945;overflow:auto;max-height:min(68dvh,620px)}.detail-overline{font:8px var(--mono);letter-spacing:1.5px;color:var(--purple);margin-bottom:10px}.viewer-sidebar h2{font:800 37px/.95 var(--display);margin:0 0 8px;overflow-wrap:anywhere}.detail-category{font:9px var(--mono);color:#9a80aa;text-transform:uppercase}.detail-table{margin:20px 0 18px;border-top:1px solid #3b2946}.detail-table div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #382640;padding:10px 0;font-size:10px}.detail-table dt{color:#9c84a9}.detail-table dd{margin:0;color:#e1c8ed;text-align:right;font-family:var(--mono);font-size:9px}.detail-label{font:8px var(--mono);color:#aa89bd;letter-spacing:1px;margin:17px 0 8px}.detail-palette{display:flex;gap:5px}.palette-chip{height:23px;flex:1;border:1px solid #ffffff25;border-radius:3px;background:var(--swatch)}.palette-chip:hover{outline:1px solid white;outline-offset:2px}.detail-tags{display:flex;gap:5px;flex-wrap:wrap;max-height:127px;overflow:auto}.tag{font-size:9px;line-height:1.3;padding:5px 7px;border:1px solid #51355e;border-radius:4px;background:#291b32;color:#c3a4d5}.tag:hover,.tag[aria-pressed="true"]{background:var(--purple);color:#100b17;border-color:var(--purple)}.meta-status{font-size:10px;color:#94759f;line-height:1.7;margin:8px 0}.viewer-actions{display:flex;flex-direction:column;gap:8px;padding-top:18px}.viewer-actions .primary-btn{font-size:11px;height:40px}.secondary-btn{height:37px;display:flex;gap:9px;align-items:center;justify-content:center;background:#25172f;color:#d2b4e4;border:1px solid #533560;border-radius:5px;font-size:11px;font-weight:600}.secondary-btn:hover{background:#392241;border-color:var(--purple)}.secondary-btn .icon{width:14px;height:14px}.viewer-links{display:flex;justify-content:space-between;gap:12px;padding-top:13px}.viewer-links button,.viewer-links a{background:none;font-size:9px;color:#bc92d0;padding:0;text-decoration:underline;text-underline-offset:3px}.viewer-links button:hover,.viewer-links a:hover{color:var(--lime)}.viewer-resolution-toggle{display:flex;align-items:center;justify-content:space-between;gap:9px;font:8px var(--mono);color:#9e7db0;padding:7px 0}.viewer-resolution-toggle button{background:none;color:#cfabdf;padding:3px 0;font:8px var(--mono);border-bottom:1px solid #69457b}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:100;max-width:calc(100vw - 32px);background:var(--lime);border:1px solid #eaff96;box-shadow:5px 5px 0 #0006;color:#1b200e;border-radius:7px;padding:12px 19px;font-size:12px;font-weight:650;transition:opacity .2s,transform .2s;text-align:center}.toast.visible{opacity:1;transform:translate(-50%,0)}.blur-on .card-open img,.blur-on .viewer-image,.blur-on .poster img{filter:blur(14px)}.blur-on .card:hover .card-open img,.blur-on .card:focus-within .card-open img{filter:blur(0)}
+    @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(min-width:1600px){.hero{min-height:385px}.hero-art{transform:scale(1.08)}.hero h1{font-size:116px}.wallpaper-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hero-copy p{font-size:14px}}
+    @media(max-width:1180px){.wrap{padding:0 32px}.header-inner{gap:24px}.primary-nav{gap:20px}.header-actions{padding-left:16px;gap:7px}.connection-btn{font-size:8px}.connection-btn .connection-text{max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hero{gap:18px;min-height:322px}.hero h1{font-size:88px}.hero-bottom{gap:16px;flex-wrap:wrap;margin-top:16px}.hero-copy p{max-width:390px}.hero-link{font-size:9px;padding:4px 0}.hero-art{transform:scale(.87);transform-origin:center right;min-width:420px;margin-left:-70px}.wallpaper-grid{gap:16px}.filter-toggle{padding:0 12px}.primary-btn{padding:0 16px}.search-row{gap:9px}.field-select{min-width:136px}.card-resolution{font-size:7px}.card-body{padding:10px}.feed-title h2{font-size:15px}.viewer-layout{grid-template-columns:minmax(0,1fr) 250px}}
+    @media(max-width:940px){.primary-nav{gap:16px}.header-actions{gap:6px;padding-left:12px}.brand-name{font-size:15px}.brand-mark{width:37px;height:37px}.brand-sub{font-size:6px;letter-spacing:1.6px}.connection-btn .connection-text{display:none}.connection-btn{padding:8px}.header-inner{gap:16px}.hero h1{font-size:78px}.hero-art{transform:scale(.75);margin-left:-110px}.hero-copy p{font-size:12px}.hero{min-height:310px;grid-template-columns:1.2fr 1fr}.hero-eyebrow{font-size:8px;letter-spacing:1px}.hero-bottom{display:block}.hero-link{display:inline-flex;margin-top:10px}.hero h1 .bizarre:after{right:-15px}.search-row{flex-wrap:wrap}.search-box{flex-basis:calc(100% - 270px)}.search-row>.primary-btn{height:43px}.field-select{height:43px;min-width:135px}.search-box{height:43px}.filter-toggle{height:43px}.search-row .primary-btn{font-size:11px}.search-key{display:none}.filter-bottom-right{gap:9px}.purity-label{font-size:8px}.filter-bottom{gap:8px}.category-tab{font-size:10px;padding:5px 9px}.wallpaper-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.advanced-filters{grid-template-columns:1fr 1fr}.feed-source{display:none}.viewer-dialog{width:calc(100vw - 26px)}.viewer-layout{grid-template-columns:minmax(0,1fr) 235px}.viewer-sidebar{padding:19px 16px}.footer-center{display:none}}
+    @media(max-width:700px){.wrap{padding:0 20px}.site-header{height:73px}.header-inner{gap:10px}.brand{gap:9px}.brand-sub{display:none}.brand-name{font-size:14px;max-width:110px;line-height:1.15}.brand-name span{display:block}.brand-mark{width:34px;height:36px}.primary-nav{gap:15px}.nav-link{font-size:9px;letter-spacing:.3px}.lore-nav{display:none}.header-actions{border:none;padding-left:0;margin-left:5px;gap:6px}.connection-btn{display:none}.icon-btn{width:29px;height:31px}.hero{grid-template-columns:1fr 1fr;gap:5px;padding:32px 0;min-height:290px}.hero h1{font-size:66px;letter-spacing:-1px}.hero-eyebrow{font-size:6px;letter-spacing:1px;gap:5px;margin-bottom:13px}.hero-copy p{font-size:11px;line-height:1.75;max-width:250px}.hero h1 .bizarre:after{height:35%}.hero-art{transform:scale(.64);transform-origin:center right;min-width:420px;margin-left:-160px;margin-right:-7px;height:282px}.hero-sticker{left:22px}.hero-link{font-size:9px}.ribbon{font-size:8px;padding:7px 0;gap:23px}.ribbon span{gap:23px}.catalog{padding-top:30px}.search-row{gap:9px}.search-box{flex-basis:100%;height:45px}.search-row>.field-select{flex:1;min-width:0;height:38px;font-size:10px}.filter-toggle{height:38px;padding:0 11px;font-size:10px}.search-row>.primary-btn{height:38px;padding:0 12px;font-size:10px;gap:7px}.search-panel{padding:12px}.filter-bottom{flex-wrap:wrap;gap:11px;margin-top:12px}.filter-bottom-right{justify-content:space-between;width:100%;padding-top:9px;border-top:1px solid #342a3c;gap:8px}.category-tab{padding:5px 11px;font-size:10px}.category-tabs{gap:5px}.filter-divider{margin-left:auto}.density-toggle{display:none}.feed-head{margin-top:23px;margin-bottom:14px}.feed-title h2{font-size:13px}.feed-title h2 .muted{font-size:9px;margin-left:4px}.feed-title{gap:7px}.feed-title>.icon{width:16px;height:16px}.wallpaper-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 11px}.card-badge{top:8px;left:8px;font-size:7px;padding:3px 5px}.card-save{top:6px;right:6px;width:25px;height:25px}.card-save .icon{width:13px;height:13px}.card-body{padding:9px 9px 8px}.card-id{font-size:8px}.card-resolution{font-size:7px}.card-category{font-size:7px}.card-colors .color-dot{width:8px;height:4px}.card-bottomline{margin-top:7px}.card-cta{display:none}.footer-inner{align-items:flex-start;gap:16px}.footer-copy{max-width:210px;line-height:1.8}.footer-right{gap:12px;flex-wrap:wrap;justify-content:flex-end;font-size:8px}.footer-right button{font-size:8px}.footer-brand{font-size:18px}.site-footer{padding:21px 0}.viewer-dialog{max-height:calc(100dvh - 26px)}.viewer-layout{display:flex;flex-direction:column;min-height:0}.viewer-stage{height:42dvh;min-height:220px;flex-shrink:0}.viewer-sidebar{max-height:none;overflow:visible;border-left:0;border-top:1px solid #422b4d}.viewer-dialog .dialog-heading{font-size:8px;letter-spacing:.5px}.viewer-dialog .dialog-head{padding:10px 14px}.viewer-controls{gap:5px}.viewer-controls .icon-btn{width:28px;height:28px}.viewer-sidebar h2{font-size:32px}.detail-table{margin:14px 0}.detail-table div{padding:7px 0}.detail-tags{max-height:100px}.viewer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:10px}.viewer-actions .secondary-btn{grid-column:1/-1}.detail-palette{max-width:250px}.dialog-title{font-size:39px}.dialog-body{padding:20px}.dialog-head{padding:15px 20px}.syntax-examples{grid-template-columns:1fr}.keyboard-row{justify-content:flex-start;gap:12px}.toast{font-size:11px}.advanced-filters{gap:12px}.filter-note{align-items:flex-start;gap:12px;font-size:10px}.filter-note button{white-space:nowrap}}
+    @media(max-width:480px){.hero{display:block;padding:29px 0 20px}.hero-copy{position:relative;z-index:3}.hero h1{font-size:76px;line-height:.88}.hero h1 span{display:inline-block}.hero h1 .bizarre{display:block;width:max-content}.hero-eyebrow{font-size:7px}.hero-copy p{font-size:12px;margin-top:18px;max-width:330px}.hero-bottom{margin-top:0}.hero-link{margin-top:15px}.hero-art{height:230px;transform:scale(.77);transform-origin:center top;margin:18px 0 -22px;min-width:0;width:420px;max-width:none;left:50%;margin-left:-210px;justify-self:auto}.hero-art .poster-back{left:16px;top:32px}.hero-art .poster-main{right:12px;top:22px}.hero-art .hero-sticker{top:0;left:24px}.hero-art .art-caption{bottom:-44px;right:25px}.art-footnote{bottom:-25px;left:30px}.hero-art .menacing{top:0;right:-10px}.hero-art .art-burst{top:0;left:95px}.ribbon{margin-top:18px}.catalog{padding-top:27px}.search-panel{padding:10px}.search-row{gap:7px}.filter-toggle{padding:0 9px}.filter-toggle .filter-text{font-size:9px}.category-tabs{width:100%;justify-content:space-between;gap:3px}.category-tab{font-size:10px;padding:5px 8px;gap:4px}.category-tab .category-symbol{font-size:11px}.search-row>.primary-btn{font-size:0;padding:0 13px;gap:0}.search-row>.primary-btn .icon{width:18px;height:18px}.search-row>.field-select{font-size:10px;max-width:calc(50% - 42px)}.search-row>.primary-btn:after{content:'GO';font-size:9px;margin-left:6px}.advanced-filters{grid-template-columns:1fr 1fr}.filter-field{font-size:8px}.filter-field select{font-size:11px}.feed-title h2{font-size:12px}.feed-title h2 .muted{font-size:8px}.feed-tools{gap:6px}.card-resolution{font-size:6px}.card-id{font-size:7px}.card-body{padding:9px 8px 8px}.card-colors .color-dot{width:7px}.card-category{font-size:6px}.card-badge{font-size:6px}.card-picture{aspect-ratio:1.45}.card-save{width:23px;height:23px}.footer-inner{gap:10px}.footer-copy{max-width:180px;font-size:8px}.footer-right{gap:10px;max-width:150px}.dialog-heading{font-size:9px}.load-region.error{padding:20px 12px}.load-region.error h3{font-size:26px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#catalog">Skip to wallpapers</a>
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 1 15 8 23 12 15 15 12 23 8 15 1 12 8 8Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="7.3"/><path d="m16.2 16.2 4.7 4.7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 19 19 5M5 5h14v14"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v16m-6-6 6 6 6-6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V4m-6 6 6-6 6 6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m10 5 7 7-7 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.5 4.8a5.5 5.5 0 0 0-7.8 0L12 5.5l-.7-.7a5.5 5.5 0 0 0-7.8 7.8L12 21l8.5-8.4a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 7h6m4 0h6M4 17h10m4 0h2"/><circle cx="12" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/></symbol>
+    <symbol id="i-wide" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4-8 9-8 9s-8-5-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.3 6.3a8 8 0 0 1 13.4 4.7M4.3 13a8 8 0 0 0 13.4 4.7"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V4H4v11h4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="m14 2-10 12h7l-1 8 10-12h-7l1-8Z"/></symbol>
+  </defs></svg>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="./" id="brandLink" aria-label="Bizarre Vision home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg></span>
+        <div><div class="brand-name">BIZARRE <span>VISION</span></div><div class="brand-sub">THE UNORDINARY ARCHIVE</div></div>
+      </a>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button class="nav-link active" id="discoverNav" aria-current="page">DISCOVER</button>
+        <button class="nav-link" id="collectionNav">COLLECTION <span class="nav-count" id="savedCount">0</span></button>
+        <button class="nav-link lore-nav" id="loreBtn">THE LORE <svg class="icon" style="width:12px;height:12px"><use href="#i-arrow"/></svg></button>
+      </nav>
+      <div class="header-actions">
+        <button id="networkBtn" class="connection-btn" data-state="loading" title="Network & proxy settings" aria-label="Open network and proxy settings"><span class="signal-dot"></span><span class="connection-text" id="connectionText">CONNECTING</span></button>
+        <button class="icon-btn" id="blurToggle" aria-label="Blur wallpapers" aria-pressed="false" title="Blur wallpapers (B)"><svg class="icon"><use href="#i-eye"/></svg></button>
+        <button class="icon-btn help-icon" id="helpBtn" aria-label="Search help and keyboard shortcuts" title="Search help (?)">?</button>
       </div>
     </div>
-
-    <script>
-      (() => {
-        const WALLHAVEN_API = "https://wallhaven.cc/api/v1";
-
-        /**
-         * Image load chain:
-         *  1. Direct Wallhaven CDN URL (referrerPolicy="no-referrer" bypasses hotlink checks)
-         *  2. Online raw proxy (cors.tools)
-         *  3. Online raw proxy (allorigins)
-         *  4. Local server image proxy (/api/img) if hosted with backend
-         */
-        const IMAGE_PROXIES = [
-          (url) => url,
-          (url) => `https://cors.tools/proxy?url=${encodeURIComponent(url)}`,
-          (url) =>
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-          (url) => `/api/img?url=${encodeURIComponent(url)}`,
-        ];
-
-        const apiCache = new Map();
-
-        function createSmartImage(src, alt, loadingMode, className) {
-          const img = document.createElement("img");
-          let idx = 0;
-          const lastIndex = IMAGE_PROXIES.length - 1;
-          img.alt = alt || "";
-          img.referrerPolicy = "no-referrer";
-          img.decoding = "async";
-          img.loading = loadingMode || "lazy";
-          if (className) img.className = className;
-          img.src = IMAGE_PROXIES[0](src);
-          img.onerror = () => {
-            if (idx < lastIndex) {
-              idx += 1;
-              img.src = IMAGE_PROXIES[idx](src);
-            }
-          };
-          return img;
+  </header>
+  <main>
+    <section class="hero wrap" id="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <div class="hero-eyebrow"><span class="tiny-star">✦</span> NOT YOUR AVERAGE WALLPAPER SITE <span style="color:#6b5c7c">/ VOL. 01</span></div>
+        <h1 id="heroTitle"><span>EMBRACE THE</span><span class="bizarre">BIZARRE.</span></h1>
+        <div class="hero-bottom"><p>Extraordinary worlds. Unreasonably good wallpapers.<br>Find the one that awakens your screen.</p></div>
+        <button class="hero-link" id="exploreBtn">FIND YOUR NEXT STAND <svg class="icon"><use href="#i-down"/></svg></button>
+      </div>
+      <div class="hero-art" aria-label="A collage of online wallpapers, in a manga-inspired frame">
+        <div class="art-dots"></div><div class="art-burst"></div>
+        <figure class="poster poster-back"><div class="picture"><span class="poster-placeholder">STAND<br>BY.</span><img id="heroBack" alt="A purple-toned illustration from the Bizarre Vision wallpaper archive" decoding="async" width="640" height="360"></div></figure>
+        <figure class="poster poster-main"><div class="picture"><span class="poster-placeholder">A DIFFERENT<br>DIMENSION.</span><img id="heroFront" alt="A cinematic wallpaper from the online archive" decoding="async" fetchpriority="high" width="640" height="360"><span class="poster-serial">VISION / 001</span><span class="poster-label">REALITY IS OPTIONAL. ↗</span></div></figure>
+        <div class="hero-sticker"><b>100%</b><span>BIZARRE</span><span>✦ ✦ ✦</span></div>
+        <span class="menacing" lang="ja" aria-hidden="true">ゴゴゴゴゴ</span>
+        <span class="art-caption"><span>✦</span> THIS IS YOUR STAND.</span>
+        <span class="art-footnote">HIGH RES. HIGHER STANDARDS.</span>
+      </div>
+    </section>
+    <div class="ribbon" aria-hidden="true"><span><b>✦</b> INFINITE DISCOVERY</span><span><b>✦</b> NO BORING SCREENS ALLOWED</span><span><b>✦</b> 4K & BEYOND</span><span><b>✦</b> PURE VISUAL CHAOS</span><span><b>✦</b> FIND YOUR STAND</span><span><b>✦</b> ゴゴゴゴゴ</span></div>
+    <section class="catalog wrap" id="catalog" aria-label="Wallpaper discovery">
+      <form id="searchForm" class="search-panel" autocomplete="off">
+        <div class="search-row">
+          <div class="search-box"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><label class="sr-only" for="q">Search wallpapers</label><input id="q" name="q" type="search" placeholder="What's your next obsession? Try anime, cyberpunk, a little chaos…" maxlength="160"><span class="search-key" title="Press / to focus search">/</span></div>
+          <label class="sr-only" for="sorting">Sort wallpapers</label><select id="sorting" class="field-select" name="sorting"><option value="toplist">↗ Toplist</option><option value="date_added">◷ Latest additions</option><option value="relevance">◎ Relevance</option><option value="views">◉ Most viewed</option><option value="favorites">♡ Most favorited</option><option value="random">⚄ Surprise me</option></select>
+          <button type="button" class="filter-toggle" id="filterToggle" aria-expanded="false" aria-controls="advancedFilters"><svg class="icon"><use href="#i-filter"/></svg><span class="filter-text">Filters</span><span class="filter-badge" id="filterBadge" hidden>0</span></button>
+          <button type="submit" class="primary-btn">FIND YOUR VISION <svg class="icon"><use href="#i-arrow"/></svg></button>
+        </div>
+        <div class="filter-bottom">
+          <div class="category-tabs" aria-label="Wallpaper category" role="group">
+            <button type="button" class="category-tab" data-category="111" aria-pressed="true"><span class="category-symbol">✦</span> All worlds</button>
+            <button type="button" class="category-tab" data-category="100" aria-pressed="false"><span class="category-symbol">◈</span> General</button>
+            <button type="button" class="category-tab" data-category="010" aria-pressed="false"><span class="category-symbol">✧</span> Anime</button>
+            <button type="button" class="category-tab" data-category="001" aria-pressed="false"><span class="category-symbol">◎</span> People</button>
+            <input type="hidden" name="categories" id="categories" value="111">
+          </div>
+          <div class="filter-bottom-right"><span class="purity-label"><svg class="icon"><use href="#i-shield"/></svg><span id="purityLabel">SFW ONLY</span></span><span class="filter-divider"></span><button type="button" class="quality-toggle" id="qualityToggle" aria-pressed="false" title="Minimum resolution: 3840 × 2160">4K+ ONLY</button><span class="filter-divider"></span><div class="density-toggle" role="group" aria-label="Grid density"><button class="density-btn" type="button" data-density="normal" aria-label="Comfortable grid" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button class="density-btn" type="button" data-density="wide" aria-label="Large previews" aria-pressed="false"><svg class="icon"><use href="#i-wide"/></svg></button></div></div>
+        </div>
+        <div class="advanced-filters" id="advancedFilters" hidden>
+          <label class="filter-field" for="atleast">MINIMUM RESOLUTION<select id="atleast" name="atleast"><option value="">Any resolution</option><option value="1920x1080">Full HD · 1920 × 1080</option><option value="2560x1440">QHD · 2560 × 1440</option><option value="3840x2160">4K UHD · 3840 × 2160</option><option value="5120x2880">5K · 5120 × 2880</option><option value="7680x4320">8K · 7680 × 4320</option></select></label>
+          <label class="filter-field" for="ratios">ASPECT RATIO<select id="ratios" name="ratios"><option value="">All proportions</option><option value="16x9">16:9 · Widescreen</option><option value="16x10">16:10 · Desktop</option><option value="21x9">21:9 · Ultrawide</option><option value="9x16">9:16 · Portrait</option><option value="9x10">9:10 · Portrait</option><option value="1x1">1:1 · Square</option></select></label>
+          <label class="filter-field" for="colors">COLOR ENERGY<select id="colors" name="colors"><option value="">Any color</option><option value="993399">Purple</option><option value="663399">Violet</option><option value="333399">Indigo</option><option value="0066cc">Blue</option><option value="0099cc">Sky blue</option><option value="66cccc">Turquoise</option><option value="77cc33">Lime</option><option value="ffff00">Yellow</option><option value="ffcc33">Gold</option><option value="ff9900">Orange</option><option value="ff6600">Pumpkin</option><option value="990000">Red</option><option value="cc0000">Vivid red</option><option value="cc3333">Crimson</option><option value="ea4c88">Rose</option><option value="fdadc7">Pink</option><option value="336600">Forest</option><option value="669900">Olive</option><option value="666600">Drab</option><option value="999900">Moss</option><option value="cccc33">Mustard</option><option value="cc6633">Rust</option><option value="996633">Tan</option><option value="663300">Brown</option><option value="660000">Dark red</option><option value="000000">Black</option><option value="424153">Charcoal</option><option value="999999">Gray</option><option value="cccccc">Light gray</option><option value="ffffff">White</option><option value="abbcda">Cloud blue</option><option value="e7d8b1">Sand</option></select></label>
+          <label class="filter-field" for="topRange">TOPLIST RANGE<select id="topRange" name="topRange"><option value="1d">Past 24 hours</option><option value="3d">Past 3 days</option><option value="1w">Past week</option><option value="1M" selected>Past month</option><option value="3M">Past 3 months</option><option value="6M">Past 6 months</option><option value="1y">Past year</option></select></label>
+          <label class="filter-field" for="purity">CONTENT RATING<select id="purity" name="purity"><option value="100">SFW only</option><option value="110">SFW + sketchy (mature)</option></select></label>
+          <label class="filter-field" for="order">SORT ORDER<select id="order" name="order"><option value="desc">Descending</option><option value="asc">Ascending</option></select></label>
+          <div class="filter-note"><span>All filters are sent to Wallhaven. No NSFW or API keys required.</span><button type="button" class="text-btn" id="resetFilters">Reset filters ↺</button></div>
+        </div>
+        <div class="filter-applied" id="activeFilters" aria-label="Active filters"></div>
+      </form>
+      <div class="collection-note" id="collectionNote" hidden>Your personal Stand collection. Saved on this device; images always load online.</div>
+      <div class="feed-head">
+        <div class="feed-title"><svg class="icon" aria-hidden="true"><use href="#i-star"/></svg><h2 id="feedTitle">PICK YOUR REALITY <span class="muted" id="resultCount">Connecting to the archive…</span></h2></div>
+        <div class="feed-tools"><span class="feed-source"><span class="signal-dot"></span> LIVE FROM WALLHAVEN</span><button class="icon-btn" id="refreshBtn" aria-label="Refresh the current search" title="Refresh the archive"><svg class="icon"><use href="#i-refresh"/></svg></button></div>
+      </div>
+      <div class="wallpaper-grid" id="grid" aria-label="Wallpapers"></div>
+      <div class="load-region" id="loadRegion" role="status" aria-live="polite"><span class="load-label"><span class="loading-star">✦</span> SUMMONING YOUR NEXT OBSESSION</span></div>
+      <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+      <noscript><div class="no-js">Bizarre Vision needs JavaScript to connect to the online wallpaper archive. It has no offline wallpaper mode.</div></noscript>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-inner"><div><div class="footer-brand">BIZARRE <span>VISION.</span></div><div class="footer-copy">An unofficial Wallhaven experience. All artwork belongs to its creators.<br>Inspired by the bizarre. Not affiliated with JoJo's Bizarre Adventure.</div></div><span class="footer-center" lang="ja" aria-hidden="true">ゴゴゴゴゴ</span><div class="footer-right"><a href="https://wallhaven.cc" target="_blank" rel="noopener noreferrer">POWERED BY WALLHAVEN ↗</a><button id="topBtn">BACK TO TOP <svg class="icon"><use href="#i-up"/></svg></button></div></div></footer>
+  <dialog id="helpDialog" aria-labelledby="helpTitle">
+    <div class="dialog-head"><span class="dialog-heading"><span class="lime">✦</span> THE BIZARRE FIELD GUIDE</span><button class="icon-btn" data-close aria-label="Close help"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <div class="dialog-body"><h2 class="dialog-title" id="helpTitle">A little guide to<br><em>the extraordinary.</em></h2><p class="dialog-intro">Your screen deserves a Stand. Search, discover, collect — and keep scrolling. The archive is live, not an offline bundle.</p>
+      <section class="help-section"><h3>01 / Speak the language of the archive</h3><p>Use a keyword or Wallhaven's tags. Select a tag or color in the viewer to search for more like it.</p><div class="syntax-examples"><div><code>anime</code> a keyword</div><div><code>+"cyberpunk city"</code> exact, required tag</div><div><code>-landscape</code> exclude a term</div><div><code>@username</code> find an uploader</div><div><code>type:png</code> file format</div><div><code>id:123</code> an exact tag ID</div></div></section>
+      <section class="help-section"><h3>02 / A filter for every dimension</h3><p>Choose a category, minimum resolution, aspect ratio or dominant color. Toplist uses the selected time range. Random uses a stable seed so pages keep their order. Search results are always SFW unless you explicitly choose mature content.</p></section>
+      <section class="help-section"><h3>03 / Shortcuts to another world</h3><div class="keyboard-row"><span><kbd>/</kbd> Search</span><span><kbd>B</kbd> Blur</span><span><kbd>← →</kbd> Inspect</span><span><kbd>Esc</kbd> Close</span><span><kbd>?</kbd> Help</span></div></section>
+      <section class="help-section"><h3>04 / Infinite, but not infinite requests</h3><p>More wallpapers load near the bottom, 24 at a time. Images load only near your viewport. The full-resolution file is requested only when you choose it. A failed request gives you a retry; it never becomes an endless loop.</p></section>
+      <section class="help-section"><h3>05 / Your collection</h3><p>The heart saves a wallpaper's public information on this device. No account is needed. It is not an offline download; the image still comes from the internet. Blur is visual only, and is removed on hover or in the viewer by choice.</p></section>
+      <section class="help-section"><h3>06 / If the connection gets bizarre</h3><p>GitHub Pages cannot run a private backend. Browser CORS restrictions and unavailable relays can interrupt the archive. Use the connection indicator to inspect the live routes, retry, or supply your own HTTPS CORS relay. Public proxies are not guaranteed to stay online.</p><button class="text-btn" id="helpNetworkBtn">Open connection settings →</button></section>
+    </div>
+  </dialog>
+  <dialog id="networkDialog" aria-labelledby="networkTitle">
+    <div class="dialog-head"><span class="dialog-heading"><span class="lime">✦</span> STAND COMMUNICATIONS</span><button class="icon-btn" data-close aria-label="Close connection settings"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <div class="dialog-body"><h2 class="dialog-title" id="networkTitle">Keep the <em>vision alive.</em></h2><div class="network-intro"><svg class="icon"><use href="#i-globe"/></svg><p>Direct is fastest. HTTPS relays step in when the browser cannot read Wallhaven's API. A failed relay is paused briefly, not hammered. Only Wallhaven URLs are accepted.</p></div><div id="routeList" class="network-routes"></div>
+      <div class="network-form"><label for="routePreference">PREFERRED CONNECTION</label><select id="routePreference"><option value="auto">Auto · try the last working route first</option><option value="direct">Direct · Wallhaven</option><option value="hexlet">Hexlet · public HTTPS relay</option><option value="allorigins">AllOrigins · public HTTPS relay</option><option value="codetabs">Codetabs · public HTTPS relay</option><option value="corslol">CORS.lol · public HTTPS relay</option><option value="custom">My own HTTPS relay</option></select><label class="custom-label" for="customRelay">YOUR OPTIONAL CORS RELAY</label><input id="customRelay" type="url" placeholder="https://your-relay.example/?url=" spellcheck="false" autocomplete="off"><p class="network-note" style="margin:0">Use a trusted, HTTPS GET relay whose `url=` parameter accepts an encoded target URL. No API keys are sent to third parties. Your own relay can be more reliable than a public one.</p><button class="primary-btn" id="applyNetwork">SAVE & RECONNECT <svg class="icon"><use href="#i-zap"/></svg></button></div>
+      <div class="network-privacy">Route status reflects requests from this session, not a global uptime monitor. Public proxies may have limits, block a host, or log requests. Use a relay you trust; queries, image URLs and your IP can be visible to it. GitHub Pages deployment needs no server-side code.</div>
+    </div>
+  </dialog>
+  <dialog id="viewerDialog" class="viewer-dialog" aria-labelledby="viewerTitle">
+    <div class="dialog-head"><span class="dialog-heading"><span class="lime">✦</span> STAND INSPECTOR <span id="viewerPosition"></span></span><div class="viewer-controls"><button class="icon-btn" id="viewerReveal" aria-label="Toggle wallpaper blur" aria-pressed="false" title="Toggle blur (B)"><svg class="icon"><use href="#i-eye"/></svg></button><button class="icon-btn" id="prevWallpaper" aria-label="Previous wallpaper"><svg class="icon"><use href="#i-left"/></svg></button><button class="icon-btn" id="nextWallpaper" aria-label="Next wallpaper"><svg class="icon"><use href="#i-right"/></svg></button><button class="icon-btn" data-close aria-label="Close wallpaper"><svg class="icon"><use href="#i-close"/></svg></button></div></div>
+    <div class="viewer-layout"><div class="viewer-stage loading" id="viewerStage"><span class="viewer-placeholder" aria-hidden="true">✦</span><img id="viewerImage" class="viewer-image" alt="Wallpaper preview" decoding="async"><span id="viewerPreviewLabel" class="viewer-preview-label">PREVIEW · FULL RESOLUTION ON DEMAND</span></div><aside class="viewer-sidebar"><div class="detail-overline">A VISION FROM ANOTHER WORLD</div><h2 id="viewerTitle">#WALLPAPER</h2><span class="detail-category" id="viewerCategory">Wallpaper</span><dl class="detail-table"><div><dt>Resolution</dt><dd id="viewerResolution">—</dd></div><div><dt>File size</dt><dd id="viewerFileSize">—</dd></div><div><dt>Uploaded by</dt><dd id="viewerUploader">—</dd></div><div><dt>Favorites</dt><dd id="viewerFavorites">—</dd></div></dl><div class="detail-label">COLOR ENERGY / CLICK TO EXPLORE</div><div class="detail-palette" id="viewerPalette"></div><div class="detail-label">TAGS / CLICK TO EXPLORE</div><div class="detail-tags" id="viewerTags"></div><div class="meta-status" id="metaStatus" aria-live="polite">Connecting to wallpaper details…</div><div class="viewer-actions"><button class="primary-btn" id="downloadBtn"><svg class="icon"><use href="#i-download"/></svg><span>DOWNLOAD ORIGINAL</span></button><button class="secondary-btn" id="viewerSave"><svg class="icon"><use href="#i-heart"/></svg><span>Save to collection</span></button><button class="secondary-btn" id="fullImageBtn"><svg class="icon"><use href="#i-eye"/></svg>Load full-resolution preview</button></div><div class="viewer-links"><a id="originalLink" target="_blank" rel="noopener noreferrer">View on Wallhaven ↗</a><button id="copyLinkBtn">Copy link</button></div></aside></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+  (() => {
+    'use strict';
+    // GitHub Pages: this is the complete app. No server, key, worker or build step required.
+    // Public relays are optional transports, not a guarantee of upstream availability.
+    const CONFIG = Object.freeze({
+      API: 'https://wallhaven.cc/api/v1',
+      ROUTES: [
+        {id:'direct', name:'Direct / Wallhaven', make:url=>url},
+        {id:'hexlet', name:'Hexlet relay', make:url=>'https://allorigins.hexlet.app/raw?url='+encodeURIComponent(url)},
+        {id:'allorigins', name:'AllOrigins', make:url=>'https://api.allorigins.win/raw?url='+encodeURIComponent(url)},
+        {id:'codetabs', name:'Codetabs', make:url=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url)},
+        {id:'corslol', name:'CORS.lol', make:url=>'https://api.cors.lol/?url='+encodeURIComponent(url)}
+      ],
+      CACHE_TTL: 120000, CACHE_LIMIT: 8, API_TIMEOUT: 7000, DIRECT_TIMEOUT: 3500,
+      IMAGE_LIMIT: 4, IMAGE_TIMEOUT: 14000, MAX_IMAGE_BYTES: 64*1024*1024
+    });
+    const $ = id => document.getElementById(id);
+    const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    const storage = {
+      get(key, fallback) { try { const raw=localStorage.getItem('bv:'+key); return raw ? JSON.parse(raw) : fallback; } catch { return fallback; } },
+      set(key,value) { try { localStorage.setItem('bv:'+key,JSON.stringify(value)); return true; } catch { return false; } }
+    };
+    const abortError = () => new DOMException('Request cancelled','AbortError');
+    const sleep = (ms,signal) => new Promise((resolve,reject) => {
+      if(signal?.aborted) return reject(abortError());
+      const abort=()=>{clearTimeout(timer);reject(abortError());};
+      const timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},ms);
+      signal?.addEventListener('abort',abort,{once:true});
+    });
+    function safeURL(value, allowed=['wallhaven.cc','w.wallhaven.cc','th.wallhaven.cc']) {
+      try { const u=new URL(value); return u.protocol==='https:' && allowed.includes(u.hostname) && !u.username && !u.password ? u.href : null; } catch { return null; }
+    }
+    function normalizeWallpaper(w) {
+      if(!w || !/^[a-z0-9]{6}$/i.test(w.id) || !['sfw','sketchy','nsfw'].includes(w.purity)) return null;
+      const small=safeURL(w.thumbs?.small,['th.wallhaven.cc']);
+      const large=safeURL(w.thumbs?.large,['th.wallhaven.cc']) || small;
+      const path=safeURL(w.path,['w.wallhaven.cc']);
+      if(!small || !path) return null;
+      return { id:w.id, purity:w.purity, category:['general','anime','people'].includes(w.category)?w.category:'general', resolution:/^\d+x\d+$/.test(w.resolution)?w.resolution:'—',
+        dimension_x:Number(w.dimension_x)||0, dimension_y:Number(w.dimension_y)||0, colors:Array.isArray(w.colors)?w.colors.filter(c=>/^#[a-f\d]{6}$/i.test(c)).slice(0,5):[],
+        thumbs:{small,large}, path, file_size:Number(w.file_size)||0, file_type:w.file_type||'image',
+        url:'https://wallhaven.cc/w/'+w.id, uploader:w.uploader?.username||'', favorites:Number(w.favorites)||0,
+        tags:Array.isArray(w.tags)?w.tags.filter(t=>typeof t.name==='string').slice(0,100):[],
+        views:Number(w.views)||0 };
+    }
+    function wallpaperFromID(id) { return /^[a-z0-9]{6}$/i.test(id)?{id,url:'https://wallhaven.cc/w/'+id}:null; }
+    function escapeText(value) { return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function getCustomRoute() {
+      const endpoint=storage.get('custom','');
+      try { const u=new URL(endpoint); return u.protocol==='https:' && !u.username && !u.password && !u.port && u.searchParams.has('url') ? {id:'custom',name:'Your HTTPS relay',make:url=>{const built=new URL(u.href);built.searchParams.set('url',url);return built.href;}} : null; } catch { return null; }
+    }
+    const routeStats = new Map();
+    class NetworkError extends Error { constructor(message,options={}) { super(message); this.name='NetworkError';Object.assign(this,options); } }
+    const network = {
+      preferred: storage.get('route','auto'), active:'direct', failedUntil:new Map(), apiBlockUntil:0,
+      cache:new Map(), inFlight:new Map(), lastStatus:'loading',
+      routes() {
+        const routes=[...CONFIG.ROUTES]; const custom=getCustomRoute(); if(custom) routes.push(custom);
+        const rank=route=>route.id===this.preferred?0:route.id===this.active?1:2;
+        return routes.sort((a,b)=>rank(a)-rank(b));
+      },
+      setStatus(state,text) { $('networkBtn').dataset.state=state;$('connectionText').textContent=text;this.lastStatus=state; },
+      async readBody(response,signal,maxBytes) {
+        if(!response.body || !response.body.getReader) {
+          const blob=await response.blob();if(blob.size>maxBytes)throw new NetworkError('Response is too large.');return blob;
         }
-
-        async function fetchWithProxyFallback(
-          localPath,
-          upstreamUrl,
-          ttlMs,
-          signal,
-        ) {
-          const now = Date.now();
-          const cached = apiCache.get(upstreamUrl);
-          if (cached && cached.expires > now) {
-            return cached.value;
-          }
-
-          const isStaticHost =
-            window.location.hostname.endsWith(".github.io") ||
-            window.location.protocol === "file:";
-
-          if (!isStaticHost && localPath) {
-            try {
-              const res = await fetch(localPath, { signal });
-              if (res.ok) {
-                const json = await res.json();
-                if (json && json.data) {
-                  apiCache.set(upstreamUrl, {
-                    expires: now + ttlMs,
-                    value: json,
-                  });
-                  return json;
-                }
-              }
-            } catch (err) {
-              if (err && err.name === "AbortError") throw err;
-            }
-          }
-
-          const directProxies = [
-            `https://cors.tools/proxy?url=${encodeURIComponent(upstreamUrl)}`,
-            `https://proxy.cors.dev/${upstreamUrl}`,
-          ];
-
-          for (const proxyUrl of directProxies) {
-            try {
-              const res = await fetch(proxyUrl, { signal });
-              if (res.ok) {
-                const json = await res.json();
-                if (json && json.data) {
-                  apiCache.set(upstreamUrl, {
-                    expires: now + ttlMs,
-                    value: json,
-                  });
-                  return json;
-                }
-              }
-            } catch (err) {
-              if (err && err.name === "AbortError") throw err;
-            }
-          }
-
-          const allOriginsUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(upstreamUrl)}`;
-          const res = await fetch(allOriginsUrl, { signal });
-          if (res.ok) {
-            const wrapper = await res.json();
-            if (wrapper && typeof wrapper.contents === "string") {
-              const parsed = JSON.parse(wrapper.contents);
-              if (parsed && parsed.data) {
-                apiCache.set(upstreamUrl, {
-                  expires: now + ttlMs,
-                  value: parsed,
-                });
-                return parsed;
-              }
-            }
-          }
-
-          throw new Error(
-            "Wallhaven API unreachable through all proxies. Please retry.",
-          );
-        }
-
-        const form = document.getElementById("searchForm");
-        const grid = document.getElementById("grid");
-        const sentinel = document.getElementById("sentinel");
-        const pageInfo = document.getElementById("pageInfo");
-        const loadedCountEl = document.getElementById("loadedCount");
-        const loadingMoreEl = document.getElementById("loadingMore");
-        const endMessageEl = document.getElementById("endMessage");
-        const noResultsEl = document.getElementById("noResults");
-        const errorBanner = document.getElementById("errorBanner");
-        const errorText = document.getElementById("errorText");
-        const retryBtn = document.getElementById("retryBtn");
-        const expandOverlay = document.getElementById("expandOverlay");
-        const helpOverlay = document.getElementById("helpOverlay");
-        const blurToggle = document.getElementById("blurToggle");
-        const titleLink = document.getElementById("titleLink");
-
-        let abortController = null;
-        let isLoading = false;
-        let currentPage = 1;
-        let lastPage = 1;
-        let totalLoaded = 0;
-
-        titleLink.addEventListener("click", (e) => e.preventDefault());
-
-        function getQueryTags() {
-          return form.q.value
-            .split(" ")
-            .filter((t) => t.startsWith("+"))
-            .map((t) => t.slice(1));
-        }
-
-        function getQueryColor() {
-          return form.colors.value;
-        }
-
-        function toggleTag(tagName) {
-          let parts = form.q.value.split(" ").filter(Boolean);
-          const tag = `+${tagName}`;
-          if (parts.includes(tag)) {
-            parts = parts.filter((p) => p !== tag);
-          } else {
-            parts.push(tag);
-          }
-          form.q.value = parts.join(" ");
-          loadPage(1, false);
-        }
-
-        function toggleColor(color) {
-          if (color === getQueryColor()) {
-            form.colors.value = "";
-          } else {
-            form.colors.value = color;
-          }
-          loadPage(1, false);
-        }
-
-        function showSkeletons() {
-          grid.innerHTML = "";
-          for (let i = 0; i < 18; i++) {
-            const sk = document.createElement("div");
-            sk.className = "card skeleton";
-            grid.appendChild(sk);
-          }
-        }
-
-        function removeSkeletons() {
-          grid.querySelectorAll(".card.skeleton").forEach((el) => el.remove());
-        }
-
-        function updateFooterAndStatus() {
-          pageInfo.textContent = `Page ${currentPage} / ${lastPage}`;
-          loadedCountEl.textContent = `${totalLoaded} loaded`;
-          const hasMore = currentPage < lastPage;
-          endMessageEl.classList.toggle(
-            "hidden",
-            isLoading || hasMore || totalLoaded === 0,
-          );
-          noResultsEl.classList.toggle(
-            "hidden",
-            isLoading ||
-              !errorBanner.classList.contains("hidden") ||
-              totalLoaded > 0,
-          );
-        }
-
-        function copyId(id) {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(id).catch(() => {});
-          }
-        }
-
-        function formatNumber(n) {
-          return Number(n || 0).toLocaleString("en-US");
-        }
-
-        function formatBytes(bytes) {
-          if (bytes < 1024) return `${bytes} B`;
-          if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-          return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        }
-
-        function metaRowHtml(label, value) {
-          return `
-            <div class="meta-row">
-              <span>${label}</span>
-              <b>${value}</b>
-            </div>
-          `;
-        }
-
-        async function loadPage(pageNum = 1, append = false) {
-          if (abortController) {
-            abortController.abort();
-          }
-          const controller = new AbortController();
-          abortController = controller;
-          isLoading = true;
-
-          if (append) {
-            loadingMoreEl.classList.remove("hidden");
-            endMessageEl.classList.add("hidden");
-          } else {
-            errorBanner.classList.add("hidden");
-            endMessageEl.classList.add("hidden");
-            noResultsEl.classList.add("hidden");
-            totalLoaded = 0;
-            showSkeletons();
-          }
-
-          const fd = new FormData(form);
-          const params = new URLSearchParams();
-          for (const [key, value] of fd.entries()) {
-            if (key === "colors" && value === "") continue;
-            params.append(key, String(value));
-          }
-          params.set("page", String(pageNum));
-          const qs = params.toString();
-
-          try {
-            const json = await fetchWithProxyFallback(
-              `/api/search?${qs}`,
-              `${WALLHAVEN_API}/search?${qs}`,
-              45000,
-              controller.signal,
-            );
-
-            if (!append) {
-              grid.innerHTML = "";
-            } else {
-              removeSkeletons();
-            }
-
-            (json.data || []).forEach((w) => {
-              const card = document.createElement("div");
-              card.className = "card";
-
-              const img = createSmartImage(
-                w.thumbs.small,
-                w.id,
-                "lazy",
-                "card-img",
-              );
-              card.appendChild(img);
-
-              const info = document.createElement("div");
-              info.className = "info";
-              info.addEventListener("click", (e) => e.stopPropagation());
-
-              const resSpan = document.createElement("span");
-              resSpan.textContent = w.resolution;
-
-              const idBtn = document.createElement("button");
-              idBtn.type = "button";
-              idBtn.className = "id-link";
-              idBtn.title = "Copy ID";
-              idBtn.textContent = w.id;
-              idBtn.addEventListener("click", () => copyId(w.id));
-
-              info.appendChild(resSpan);
-              info.appendChild(idBtn);
-              card.appendChild(info);
-
-              card.addEventListener("click", () => openExpanded(w));
-              grid.appendChild(card);
-            });
-
-            totalLoaded = grid.querySelectorAll(".card:not(.skeleton)").length;
-            currentPage = (json.meta && json.meta.current_page) || pageNum;
-            lastPage = (json.meta && json.meta.last_page) || currentPage;
-          } catch (err) {
-            if (err && err.name === "AbortError") return;
-            removeSkeletons();
-            errorText.textContent =
-              err instanceof Error ? err.message : "Failed to load wallpapers";
-            errorBanner.classList.remove("hidden");
-          } finally {
-            if (abortController === controller) {
-              isLoading = false;
-              loadingMoreEl.classList.add("hidden");
-              removeSkeletons();
-              updateFooterAndStatus();
-            }
-          }
-        }
-
-        function closeExpanded() {
-          expandOverlay.classList.remove("visible");
-          expandOverlay.innerHTML = "";
-        }
-
-        async function openExpanded(w) {
-          expandOverlay.innerHTML = "";
-          expandOverlay.classList.add("visible");
-
-          const card = document.createElement("div");
-          card.className = "expanded-card";
-
-          const img = createSmartImage(w.path, w.id, "eager", "expanded-img");
-          card.appendChild(img);
-
-          const content = document.createElement("div");
-          content.className = "expanded-content";
-
-          const titleRow = document.createElement("div");
-          titleRow.className = "expanded-title";
-          const link = document.createElement("a");
-          link.href = w.url;
-          link.target = "_blank";
-          link.rel = "noreferrer";
-          link.textContent = w.id;
-          const closeBtn = document.createElement("button");
-          closeBtn.type = "button";
-          closeBtn.textContent = "×";
-          closeBtn.addEventListener("click", closeExpanded);
-          titleRow.appendChild(link);
-          titleRow.appendChild(closeBtn);
-          content.appendChild(titleRow);
-
-          const metaGrid = document.createElement("div");
-          metaGrid.className = "meta-grid";
-          metaGrid.innerHTML = [
-            metaRowHtml("Resolution", w.resolution || "…"),
-            metaRowHtml("Views", "…"),
-            metaRowHtml("Favorites", "…"),
-            metaRowHtml("Uploader", "…"),
-            metaRowHtml("Category", "…"),
-            metaRowHtml("Purity", "…"),
-            metaRowHtml("File size", "…"),
-            metaRowHtml("Created", "…"),
-          ].join("");
-          content.appendChild(metaGrid);
-
-          const detailLoader = document.createElement("div");
-          detailLoader.className = "loader";
-          detailLoader.textContent = "LOADING DETAILS…";
-          content.appendChild(detailLoader);
-
-          card.appendChild(content);
-          expandOverlay.appendChild(card);
-
-          try {
-            const json = await fetchWithProxyFallback(
-              `/api/wallpaper?id=${encodeURIComponent(w.id)}`,
-              `${WALLHAVEN_API}/w/${encodeURIComponent(w.id)}`,
-              600000,
-            );
-            const detail = json && json.data;
-            detailLoader.remove();
-            if (!detail) return;
-
-            metaGrid.innerHTML = [
-              metaRowHtml("Resolution", detail.resolution || w.resolution),
-              metaRowHtml("Views", formatNumber(detail.views)),
-              metaRowHtml("Favorites", formatNumber(detail.favorites)),
-              metaRowHtml(
-                "Uploader",
-                (detail.uploader && detail.uploader.username) || "…",
-              ),
-              metaRowHtml("Category", detail.category || "…"),
-              metaRowHtml("Purity", detail.purity || "…"),
-              metaRowHtml("File size", formatBytes(detail.file_size || 0)),
-              metaRowHtml("Created", detail.created_at || "…"),
-            ].join("");
-
-            const colorStrip = document.createElement("div");
-            colorStrip.className = "color-strip";
-            (detail.colors || []).forEach((c) => {
-              const hex = c.slice(1);
-              const block = document.createElement("div");
-              block.className =
-                getQueryColor() === hex ? "color-block-active" : "color-block";
-              block.style.background = c;
-              block.title = c;
-              block.addEventListener("click", (e) => {
-                e.stopPropagation();
-                toggleColor(hex);
-                const activeHex = getQueryColor();
-                colorStrip.querySelectorAll("div").forEach((el) => {
-                  const elHex = (el.title || "").slice(1);
-                  el.className =
-                    activeHex === elHex ? "color-block-active" : "color-block";
-                });
-              });
-              colorStrip.appendChild(block);
-            });
-            content.appendChild(colorStrip);
-
-            const activeTags = getQueryTags();
-            const tagList = document.createElement("div");
-            tagList.className = "tag-list";
-            (detail.tags || []).forEach((t) => {
-              const tagEl = document.createElement("span");
-              tagEl.className = activeTags.includes(t.name)
-                ? "tag active"
-                : "tag";
-              tagEl.textContent = t.name;
-              tagEl.addEventListener("click", (e) => {
-                e.stopPropagation();
-                toggleTag(t.name);
-                tagEl.classList.toggle("active");
-              });
-              tagList.appendChild(tagEl);
-            });
-            content.appendChild(tagList);
-          } catch {
-            detailLoader.remove();
-          }
-        }
-
-        form.addEventListener("submit", (e) => {
-          e.preventDefault();
-          window.scrollTo({ top: 0 });
-          loadPage(1, false);
-        });
-
-        retryBtn.addEventListener("click", () => {
-          loadPage(1, false);
-        });
-
-        expandOverlay.addEventListener("click", (e) => {
-          if (e.target === expandOverlay) closeExpanded();
-        });
-
-        document.getElementById("helpBtn").addEventListener("click", () => {
-          helpOverlay.classList.add("visible");
-        });
-
-        helpOverlay.addEventListener("click", (e) => {
-          if (
-            e.target === helpOverlay ||
-            e.target.classList.contains("close")
-          ) {
-            helpOverlay.classList.remove("visible");
-          }
-        });
-
-        document.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") {
-            closeExpanded();
-            helpOverlay.classList.remove("visible");
-          }
-        });
-
-        let blurEnabled = false;
+        const reader=response.body.getReader(),chunks=[];let size=0;
+        try { for(;;) { if(signal?.aborted)throw abortError();const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>maxBytes){await reader.cancel();throw new NetworkError('The relay returned an oversized response.');}chunks.push(value); } }
+        finally { reader.releaseLock(); }
+        return new Blob(chunks,{type:response.headers.get('content-type')||''});
+      },
+      async transport(url,route,signal,kind='json') {
+        const controller=new AbortController();let expired=false;
+        const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});
+        if(signal?.aborted)cancel();
+        const timeout=route.id==='direct'?CONFIG.DIRECT_TIMEOUT:CONFIG.API_TIMEOUT;
+        const timer=setTimeout(()=>{expired=true;controller.abort();},kind==='blob'?35000:timeout);
+        const start=performance.now();
         try {
-          blurEnabled =
-            localStorage.getItem("bizarre-blur") === "1" ||
-            localStorage.getItem("blur") === "1";
-        } catch {}
-        grid.classList.toggle("blur-on", blurEnabled);
-        blurToggle.classList.toggle("blur-btn-active", blurEnabled);
-
-        blurToggle.addEventListener("click", () => {
-          blurEnabled = !blurEnabled;
+          const response=await fetch(route.make(url),{signal:controller.signal,mode:'cors',credentials:'omit',referrerPolicy:'no-referrer',cache:'default',headers:{Accept:kind==='blob'?'image/*':'application/json'}});
+          if(response.status===429)throw new NetworkError('Wallhaven or this relay is rate limiting requests.',{status:429,retryAfter:Math.max(30,Math.min(300,parseInt(response.headers.get('retry-after'),10)||60)),origin:route.id==='direct'?'api':'relay'});
+          if(!response.ok)throw new NetworkError('The connection returned HTTP '+response.status,{status:response.status});
+          const blob=await this.readBody(response,controller.signal,kind==='blob'?CONFIG.MAX_IMAGE_BYTES:1024*1024);
+          if(kind==='blob') { if(!blob.type.startsWith('image/')) throw new NetworkError('The relay did not return an image.');return blob; }
+          let data;try {data=JSON.parse(await blob.text());}catch {throw new NetworkError('The relay returned HTML or an invalid response, not Wallhaven JSON.');}
+          if(data.error) { const error=String(data.error); const limited=/429|rate.?limit|too many requests/i.test(error);throw new NetworkError(limited?'The archive is asking us to slow down.':error,{status:limited?429:(/401|unauthori/i.test(error)?401:502),retryAfter:60,origin:'api'}); }
+          if(!data.data || (typeof data.data!=='object')) throw new NetworkError('This is not a valid Wallhaven response.');
+          routeStats.set(route.id,{state:'ok',ms:Math.round(performance.now()-start)});
+          return data;
+        } catch(error) {
+          if(signal?.aborted)throw abortError();
+          if(expired)throw new NetworkError('This connection timed out.');
+          if(error instanceof NetworkError)throw error;
+          throw new NetworkError('This route is unavailable or blocked by CORS.');
+        } finally {clearTimeout(timer);signal?.removeEventListener('abort',cancel);}
+      },
+      async request(url,signal,kind='json') {
+        if(!navigator.onLine)throw new NetworkError('Your browser is offline. Reconnect to use the live archive.',{offline:true});
+        if(signal?.aborted)throw abortError();
+        if(kind==='json' && this.apiBlockUntil>Date.now()) throw new NetworkError('The archive requested a short pause. Please wait before retrying.',{status:429,retryAfter:Math.ceil((this.apiBlockUntil-Date.now())/1000),origin:'api'});
+        const cacheKey=url;
+        if(kind==='json' && this.cache.has(cacheKey)) {const entry=this.cache.get(cacheKey);if(entry.expires>Date.now()){this.setStatus('online',this.active==='direct'?'DIRECT':this.active.toUpperCase());return entry.data;}this.cache.delete(cacheKey);}
+        const key=kind+':'+url+':'+this.preferred;
+        if(this.inFlight.has(key))return this.inFlight.get(key);
+        const job=this.execute(url,signal,kind).finally(()=>this.inFlight.delete(key));
+        this.inFlight.set(key,job);return job;
+      },
+      async execute(url,signal,kind) {
+        const failures=[];
+        // Reserve a network slot for every distinct API call, including detail requests.
+        // Cache hits do not enter this queue. A cancelled slot never continues in the background.
+        if(kind==='json') {
+          const slot=Math.max(Date.now(),lastFetchStart+1400);lastFetchStart=slot;
+          await sleep(slot-Date.now(),signal);
+        }
+        const routes=this.routes().filter(r=>kind==='json'||r.id!=='codetabs');
+        if(kind==='blob')routes.sort((a,b)=>a.id==='direct'?-1:b.id==='direct'?1:0);
+        for(const route of routes) {
+          if(signal?.aborted)throw abortError();
+          if((this.failedUntil.get(route.id)||0)>Date.now())continue;
+          this.setStatus('loading',route.id==='direct'?'CONNECTING':route.id.toUpperCase());
+          const start=performance.now();
           try {
-            localStorage.setItem("bizarre-blur", blurEnabled ? "1" : "0");
-          } catch {}
-          grid.classList.toggle("blur-on", blurEnabled);
-          blurToggle.classList.toggle("blur-btn-active", blurEnabled);
-        });
-
-        const observer = new IntersectionObserver(
-          (entries) => {
-            if (
-              entries[0].isIntersecting &&
-              !isLoading &&
-              currentPage < lastPage
-            ) {
-              loadPage(currentPage + 1, true);
+            const result=await this.transport(url,route,signal,kind);
+            if(kind==='json')this.active=route.id;
+            this.failedUntil.delete(route.id);
+            this.setStatus('online',route.id==='direct'?'DIRECT LINK':route.name.toUpperCase());
+            if(kind==='json'){this.cache.set(url,{data:result,expires:Date.now()+CONFIG.CACHE_TTL});while(this.cache.size>CONFIG.CACHE_LIMIT){this.cache.delete(this.cache.keys().next().value);}}
+            else routeStats.set(route.id,{state:'ok',ms:Math.round(performance.now()-start)});
+            return result;
+          }catch(error) {
+            if(signal?.aborted)throw abortError();
+            if(error.status===429 && (error.origin==='api' || (route.id==='direct' && kind==='json'))) {
+              this.apiBlockUntil=Date.now()+error.retryAfter*1000;
+              this.setStatus('limited','COOLING DOWN');
+              throw error;
             }
-          },
-          { rootMargin: "1000px 0px" },
-        );
-        observer.observe(sentinel);
-
-        loadPage(1, false);
-      })();
-    </script>
-  </body>
+            if(error.status===401 && kind==='json') throw error;
+            this.failedUntil.set(route.id,Date.now()+(error.status===429?60000:25000));
+            routeStats.set(route.id,{state:'failed',error:error.message});failures.push(error);
+          }
+        }
+        this.setStatus(navigator.onLine?'error':'offline',navigator.onLine?'SIGNAL LOST':'OFFLINE');
+        throw failures[0]||new NetworkError('All routes are temporarily paused. Retry shortly or choose another connection.');
+      },
+      reset() {
+        this.failedUntil.clear();this.cache.clear();
+        if(this.apiBlockUntil<=Date.now())this.apiBlockUntil=0;
+        routeStats.clear();
+      }
+    };
+    const app = {params:new URLSearchParams(),generation:0,page:0,lastPage:1,total:0,seed:'',busy:false,error:null,collection:false,items:[],seen:new Set(),abort:null,view:null,viewerEpoch:0,detailAbort:null,downloadAbort:null,cardIndex:new Map(),saved:new Map(),blur:storage.get('blur',false)===true,density:storage.get('density','normal'),dataSaver:navigator.connection?.saveData===true};
+    const form=$('searchForm'),grid=$('grid'),loadRegion=$('loadRegion'),sentinel=$('sentinel');
+    const storedSaved=storage.get('saved',[]);
+    if(Array.isArray(storedSaved))storedSaved.slice(0,200).forEach(w=>{const clean=normalizeWallpaper(w);if(clean)app.saved.set(clean.id,clean);});
+    let toastTimer,scrollTick=false,lastFetchStart=0;
+    function toast(text) {
+      const node=$('toast'),parent=document.querySelector('dialog[open]')||document.body;
+      if(node.parentElement!==parent)parent.appendChild(node);
+      clearTimeout(toastTimer);node.textContent=text;node.classList.add('visible');toastTimer=setTimeout(()=>node.classList.remove('visible'),3600);
+    }
+    function setBlur(value) {
+      app.blur=value;document.body.classList.toggle('blur-on',value);$('blurToggle').setAttribute('aria-pressed',String(value));
+      $('blurToggle').title=value?'Blur on — hover to reveal (B)':'Blur off (B)';
+      $('viewerReveal')?.setAttribute('aria-pressed',String(value));storage.set('blur',value);
+    }
+    function setDensity(density) {app.density=density==='wide'?'wide':'normal';grid.classList.toggle('wide',app.density==='wide');document.querySelectorAll('[data-density]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.density===app.density)));storage.set('density',app.density);}
+    function setSaved(w,force) {const add=force??!app.saved.has(w.id);if(add){app.saved.set(w.id,w);}else{app.saved.delete(w.id);}const saved=storage.set('saved',[...app.saved.values()].slice(-200));if(!saved)toast('Saved for this visit. Browser storage is unavailable.');else toast(add?'A new Stand joins your collection.':'Removed from your collection.');updateSavedUI();if(app.collection)renderCollection();}
+    function updateSavedUI() {$('savedCount').textContent=app.saved.size;document.querySelectorAll('[data-save]').forEach(b=>b.setAttribute('aria-pressed',String(app.saved.has(b.dataset.save))));if(app.view){$('viewerSave').setAttribute('aria-pressed',String(app.saved.has(app.view.id)));$('viewerSave').querySelector('span').textContent=app.saved.has(app.view.id)?'Saved to your collection':'Save to collection';}}
+    const imageQueue={running:new Set(),pending:[],jobs:new Map(),
+      observer:new IntersectionObserver(entries=>entries.forEach(entry=>{
+        const job=imageQueue.jobs.get(entry.target);if(!job||job.done)return;
+        job.visible=entry.isIntersecting;if(job.visible)imageQueue.enqueue(job);else imageQueue.pause(job);
+      }),{rootMargin:'600px 0px'}),
+      enqueue(job) {
+        if(job.done||job.cancelled||job.queued||job.running||!job.img.isConnected)return;
+        job.queued=true;this.pending.push(job);this.pump();
+      },
+      pump() {
+        const score=job=>{if(job.priority)return -100000;const r=job.img.getBoundingClientRect();return Math.abs(r.top+Math.min(r.height,240)/2-innerHeight/2)+(job.visible?0:10000);};
+        this.pending.sort((a,b)=>score(a)-score(b));
+        while(this.running.size<CONFIG.IMAGE_LIMIT && this.pending.length){
+          const job=this.pending.shift();job.queued=false;
+          if(job.cancelled||job.done||!job.img.isConnected)continue;
+          this.running.add(job);job.running=true;this.load(job);
+        }
+      },
+      release(job) {clearTimeout(job.timer);job.timer=null;job.running=false;this.running.delete(job);job.img.onload=null;job.img.onerror=null;},
+      pause(job) {
+        if(job.done||job.cancelled||job.priority)return;
+        if(job.queued){job.queued=false;this.pending=this.pending.filter(item=>item!==job);}
+        if(job.running){this.release(job);job.img.removeAttribute('src');}
+        this.pump();
+      },
+      load(job) {
+        if(job.cancelled||job.done||!job.running)return;
+        const src=job.sources[job.index];if(!src){this.finish(job,true);return;}
+        const onError=()=>{
+          if(job.cancelled||job.done||!job.running)return;
+          clearTimeout(job.timer);job.img.onload=null;job.img.onerror=null;job.index++;
+          if(job.index<job.sources.length)this.load(job);else this.finish(job,true);
+        };
+        job.img.onload=()=>{
+          if(job.cancelled||job.done||!job.running)return;
+          job.img.classList.add('is-loaded');if(job.img.id==='viewerImage')$('viewerStage').classList.remove('loading');
+          this.finish(job,false);
+        };job.img.onerror=onError;
+        job.timer=setTimeout(onError,CONFIG.IMAGE_TIMEOUT);job.img.src=src;
+      },
+      finish(job,failed) {
+        if(job.cancelled||job.done)return;
+        this.release(job);job.done=true;this.observer.unobserve(job.img);this.jobs.delete(job.img);
+        if(failed)job.onFailure?.();this.pump();
+      },
+      attach(img,sources,{eager=false,priority=false,onFailure=null}={}) {
+        this.cancel(img);img.closest('.card-picture')?.querySelector('.image-failure')?.remove();
+        const candidates=[...new Set(sources.filter(Boolean))];
+        if(!candidates.length){onFailure?.();return;}
+        const job={img,sources:candidates,index:0,done:false,cancelled:false,running:false,queued:false,visible:eager,priority,onFailure};
+        this.jobs.set(img,job);img.dataset.sourceKey=candidates[0];img.loading=eager?'eager':'lazy';img.decoding='async';img.referrerPolicy='no-referrer';
+        img.removeAttribute('src');img.classList.remove('is-loaded');
+        if(eager)this.enqueue(job);else this.observer.observe(img);
+      },
+      cancel(img) {
+        const job=this.jobs.get(img);if(!job)return;
+        job.cancelled=true;job.queued=false;this.release(job);this.jobs.delete(img);this.observer.unobserve(img);
+        img.removeAttribute('src');this.pending=this.pending.filter(j=>j!==job);this.pump();
+      },
+      clear(container) {container.querySelectorAll('img').forEach(img=>this.cancel(img));}
+    };
+    function imageSources(url,kind='thumb') {const safe=safeURL(url);if(!safe)return [];const routes=network.routes().filter(r=>r.id!=='codetabs');return [safe,...routes.filter(r=>r.id!=='direct' && (kind==='thumb' || r.id==='hexlet' || r.id==='corslol' || r.id==='custom')).map(r=>r.make(safe))];}
+    function chooseThumb(w) {const small=w.thumbs.small,large=w.thumbs.large;return app.dataSaver?small: (app.density==='wide'||window.innerWidth>1200&&window.devicePixelRatio>1.5?large:small);}
+    function skeletons(count=8) {const frag=document.createDocumentFragment();for(let n=0;n<count;n++){const card=document.createElement('div');card.className='card skeleton';card.setAttribute('aria-hidden','true');card.innerHTML=`<div class="card-picture"><svg class="icon skeleton-star"><use href="#i-star"/></svg></div><div class="card-body"><div class="card-topline"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div><div class="card-bottomline"><span class="skeleton-line short"></span></div></div>`;frag.appendChild(card);}return frag;}
+    function makeCard(w,index) {
+      const card=document.createElement('article');card.className='card';card.dataset.id=w.id;card.style.setProperty('--accent',w.colors[0]||'#a780f9');
+      const picture=document.createElement('div');picture.className='card-picture';
+      const open=document.createElement('button');open.className='card-open';open.type='button';open.dataset.open=w.id;open.setAttribute('aria-label','Open wallpaper '+w.id+', '+w.resolution);
+      const placeholder=document.createElement('span');placeholder.className='image-placeholder';placeholder.setAttribute('aria-hidden','true');placeholder.textContent='✦';
+      const img=document.createElement('img');img.alt=w.category+' wallpaper · '+w.resolution;img.width=600;img.height=375;img.dataset.id=w.id;
+      open.append(placeholder,img);const badge=document.createElement('span');badge.className='card-badge'+(w.dimension_x>=3840?' uhd':'');badge.textContent=w.dimension_x>=3840?'4K+':w.category.toUpperCase();
+      const save=document.createElement('button');save.type='button';save.className='card-save';save.dataset.save=w.id;save.setAttribute('aria-label','Save wallpaper '+w.id);save.setAttribute('aria-pressed',String(app.saved.has(w.id)));save.innerHTML=icon('heart');
+      const cta=document.createElement('span');cta.className='card-cta';cta.innerHTML='ENTER THE VISION '+icon('arrow');
+      picture.append(open,badge,save,cta);const body=document.createElement('div');body.className='card-body';
+      const first=document.createElement('div');first.className='card-topline';const id=document.createElement('button');id.className='card-id';id.type='button';id.dataset.open=w.id;id.textContent='#'+w.id;
+      const res=document.createElement('span');res.className='card-resolution';res.textContent=w.resolution;first.append(id,res);
+      const last=document.createElement('div');last.className='card-bottomline';const palette=document.createElement('span');palette.className='card-colors';palette.setAttribute('aria-hidden','true');w.colors.forEach(c=>{const dot=document.createElement('span');dot.className='color-dot';dot.style.setProperty('--swatch',c);palette.appendChild(dot);});
+      const category=document.createElement('span');category.className='card-category';category.textContent=w.category+' / '+String(index+1).padStart(2,'0');last.append(palette,category);body.append(first,last);card.append(picture,body);
+      const attachImage=()=>{
+        if(!img.isConnected)return;
+        imageQueue.attach(img,imageSources(chooseThumb(w)),{onFailure:()=>{
+          if(!img.isConnected)return;
+          picture.querySelector('.image-failure')?.remove();
+          const failure=document.createElement('div');failure.className='image-failure';
+          failure.innerHTML=icon('globe')+'<span>IMAGE SIGNAL LOST</span><button class="image-retry" type="button">Retry image ↺</button>';
+          failure.querySelector('button').onclick=e=>{e.stopPropagation();failure.remove();attachImage();};
+          picture.appendChild(failure);
+        }});
+      };
+      // The observer is attached once to a detached node; it starts observing after insertion.
+      imageQueue.attach(img,imageSources(chooseThumb(w)),{onFailure:()=>{
+        if(!img.isConnected)return;
+        const failure=document.createElement('div');failure.className='image-failure';
+        failure.innerHTML=icon('globe')+'<span>IMAGE SIGNAL LOST</span><button class="image-retry" type="button">Retry image ↺</button>';
+        failure.querySelector('button').onclick=e=>{e.stopPropagation();failure.remove();attachImage();};
+        picture.appendChild(failure);
+      }});
+      return card;
+    }
+    function paintGrid(items,append=false) {
+      if(!append){imageQueue.clear(grid);grid.replaceChildren();app.cardIndex.clear();}
+      const frag=document.createDocumentFragment();items.forEach(w=>{const card=makeCard(w,app.cardIndex.size);app.cardIndex.set(w.id,w);frag.appendChild(card);});grid.appendChild(frag);
+    }
+    function readFilters() {
+      const p=new URLSearchParams();new FormData(form).forEach((v,k)=>{if(String(v).trim())p.set(k,String(v).trim());});
+      if(!/^[01]{3}$/.test(p.get('categories')||''))p.set('categories','111');
+      p.set('purity',p.get('purity')==='110'?'110':'100');
+      if(p.get('sorting')!=='toplist')p.delete('topRange');
+      if(p.get('atleast')&&!/^\d{3,5}x\d{3,5}$/.test(p.get('atleast')))p.delete('atleast');
+      if(!p.has('sorting'))p.set('sorting','toplist');return p;
+    }
+    function syncFilters() {
+      const p=readFilters();const n=[...p].filter(([k])=>k!=='categories'||p.get(k)!=='111').filter(([k])=>k!=='purity'||p.get(k)!=='100').filter(([k])=>k!=='sorting'||p.get(k)!=='toplist').length;
+      $('filterBadge').hidden=n===0;$('filterBadge').textContent=n;
+      document.querySelectorAll('[data-category]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.category===$('categories').value)));
+      $('qualityToggle').setAttribute('aria-pressed',String($('atleast').value==='3840x2160'));
+      $('purityLabel').textContent=$('purity').value==='110'?'MATURE MODE':'SFW ONLY';
+      $('topRange').disabled=$('sorting').value!=='toplist';$('topRange').closest('label').style.opacity=$('sorting').value==='toplist'?'1':'.5';
+      const chips=$('activeFilters');chips.replaceChildren();
+      const source=p.get('colors');if(source){const b=document.createElement('button');b.type='button';b.className='applied-chip';b.dataset.removeFilter='colors';b.innerHTML='<span style="width:8px;height:8px;background:#'+source+';border-radius:2px"></span> COLOR #'+source+' '+icon('close');chips.appendChild(b);}
+    }
+    function updateURL() {
+      const url=new URL(location.href);url.search='';url.hash=app.collection?'collection':'';
+      if(!app.collection)for(const [k,v]of app.params){if((k==='categories'&&v==='111')||(k==='purity'&&v==='100')||(k==='sorting'&&v==='toplist')||k==='apikey')continue;url.searchParams.set(k,v);}
+      try{history.replaceState(null,'',url.pathname+url.search+url.hash);}catch{}
+    }
+    function cancelSearch() {
+      app.generation++;app.abort?.abort();app.abort=new AbortController();app.busy=false;app.error=null;
+      clearInterval(app.retryTimer);app.retryTimer=null;
+    }
+    function setLoadState(mode,message='') {
+      loadRegion.hidden=mode==='hidden';loadRegion.className='load-region'+(mode==='error'?' error':'');loadRegion.replaceChildren();
+      loadRegion.setAttribute('aria-busy',String(mode==='loading'));
+      if(mode==='loading')loadRegion.innerHTML='<span class="load-label"><span class="loading-star">✦</span> '+escapeText(message||'SUMMONING YOUR NEXT OBSESSION')+'</span>';
+      else if(mode==='error') {
+        const title=document.createElement('h3');title.textContent='THE SIGNAL GOT A LITTLE BIZARRE.';
+        const p=document.createElement('p');p.textContent=message;
+        const actions=document.createElement('div');actions.style.cssText='display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center';
+        const retry=document.createElement('button');retry.className='primary-btn';retry.id='retryBtn';retry.innerHTML='RE-ESTABLISH CONNECTION '+icon('refresh');
+        retry.onclick=()=>{app.error=null;network.reset();loadPage();};
+        const settings=document.createElement('button');settings.className='secondary-btn';settings.type='button';settings.textContent='Connection settings ↗';settings.style.marginTop='6px';settings.onclick=openNetwork;
+        actions.append(retry,settings);loadRegion.append(title,p,actions);
+      }else if(mode==='end')loadRegion.innerHTML='<span class="load-end">'+escapeText(message||'YOU’VE REACHED THE EDGE. FOR NOW.')+'</span>';
+      else if(mode==='ready')loadRegion.innerHTML='<span class="load-label">'+escapeText(message||'KEEP SCROLLING. YOUR NEXT STAND IS OUT THERE.')+'</span>';
+    }
+    async function startSearch(refresh=false) {
+      if(!form.reportValidity())return;
+      const wasCollection=app.collection;app.collection=false;cancelSearch();app.params=readFilters();app.page=0;app.lastPage=1;app.total=0;
+      app.seed=app.params.get('sorting')==='random'?Math.random().toString(36).slice(2,8).padEnd(6,'0'):'';app.items=[];app.seen.clear();
+      syncFilters();if(refresh)network.cache.clear();updateURL();$('searchForm').hidden=false;$('collectionNote').hidden=true;$('hero').hidden=false;
+      $('feedTitle').firstChild.textContent='PICK YOUR REALITY ';$('resultCount').textContent='Connecting to the archive…';setNav();
+      imageQueue.clear(grid);grid.replaceChildren();grid.appendChild(skeletons());loadRegion.hidden=false;setLoadState('loading');
+      app.cardIndex.clear();if(wasCollection)window.scrollTo({top:0,behavior:'instant'});await loadPage();
+    }
+    async function loadPage() {
+      if(app.collection||app.busy||app.error||app.page>=app.lastPage&&app.page>0||document.hidden)return;
+      const generation=app.generation,controller=app.abort;
+      const page=app.page+1,params=new URLSearchParams(app.params);params.set('page',String(page));if(app.seed)params.set('seed',app.seed);params.delete('apikey');
+      const url=CONFIG.API+'/search?'+params.toString();app.busy=true;loadRegion.hidden=false;setLoadState('loading',app.page?'MORE WORLDS ARE ON THEIR WAY…':'SUMMONING YOUR NEXT OBSESSION');
+      try {
+        const json=await network.request(url,controller.signal);
+        if(generation!==app.generation||controller.signal.aborted)return;
+        if(!Array.isArray(json.data))throw new NetworkError('The archive returned an unexpected response.');
+        const results=json.data.slice(0,64).map(normalizeWallpaper).filter(Boolean).filter(w=>w.purity!=='nsfw'&&(w.purity==='sfw'||app.params.get('purity')==='110'));
+        if(app.page===0)grid.querySelectorAll('.skeleton').forEach(card=>card.remove());
+        const unique=results.filter(w=>!app.seen.has(w.id));unique.forEach(w=>app.seen.add(w.id));
+        app.items.push(...unique);paintGrid(unique,true);
+        const meta=json.meta||{};app.page=Math.max(page,Number(meta.current_page)||page);app.lastPage=Math.max(1,Number(meta.last_page)||1);app.total=Number(meta.total)||0;app.seed=meta.seed||app.seed;
+        $('resultCount').textContent=app.total>0?new Intl.NumberFormat('en').format(app.total)+' visions found':results.length?results.length+' visions in this dimension':'No visions found';
+        if(!app.items.length)showEmpty(false);else if(app.page>=app.lastPage)setLoadState('end');else setLoadState('ready');
+      }catch(error) {
+        if(generation!==app.generation||controller.signal.aborted||error.name==='AbortError')return;
+        if(app.page===0)grid.querySelectorAll('.skeleton').forEach(card=>card.remove());showError(error);
+      }finally {if(generation===app.generation)app.busy=false;}
+    }
+    function showError(error) {
+      clearInterval(app.retryTimer);app.error=error;
+      let msg=error.offline?'Your browser is offline. Reconnect and retry — this archive always loads online.':error.status===429?'The archive or relay is rate limiting requests. A short pause is required before retrying.':'The archive or public relays could not be reached. Check your connection, retry, or choose another route in connection settings.';
+      if(error.status===401)msg='Wallhaven could not authorize this request. Reset the filters and retry the public, SFW archive.';
+      setLoadState('error',msg);$('resultCount').textContent=app.items.length?app.items.length+' visions loaded':'Connection interrupted';
+      if(error.status===429) {
+        const btn=$('retryBtn');const until=network.apiBlockUntil||Date.now()+Math.min((error.retryAfter||30)*1000,60000);btn.disabled=true;
+        const update=()=>{const seconds=Math.max(0,Math.ceil((until-Date.now())/1000));btn.textContent='PAUSE / '+seconds+'s';btn.disabled=seconds>0;if(!seconds){clearInterval(app.retryTimer);app.error=null;btn.innerHTML='RE-ESTABLISH CONNECTION '+icon('refresh');}};
+        update();app.retryTimer=setInterval(update,1000);
+      }
+    }
+    function showEmpty(collection) {
+      const box=document.createElement('div');box.className='empty-state';box.innerHTML='<div class="empty-star">✦</div><h3>'+ (collection?'YOUR STAND IS WAITING.':'NO SIGNAL IN THIS DIMENSION.')+'</h3><p>'+(collection?'Save any wallpaper with the heart. Your next great obsession belongs here.':'Nothing matched this combination. Try a wider search, fewer tags, or another category.')+'</p><button class="primary-btn">'+(collection?'EXPLORE THE ARCHIVE':'RESET THE UNIVERSE')+' '+icon('arrow')+'</button>';
+      box.querySelector('button').onclick=()=>{if(collection)showDiscover();else {restoreDefaults();startSearch();}};grid.replaceChildren(box);box.style.gridColumn='1/-1';setLoadState('hidden');
+    }
+    function restoreDefaults() {form.reset();$('q').value='';$('categories').value='111';$('purity').value='100';$('atleast').value='';$('colors').value='';$('topRange').value='1M';$('sorting').value='toplist';$('order').value='desc';$('ratios').value='';syncFilters();}
+    function setNav() {$('discoverNav').classList.toggle('active',!app.collection);$('collectionNav').classList.toggle('active',app.collection);$('discoverNav').removeAttribute('aria-current');$('collectionNav').removeAttribute('aria-current');$(app.collection?'collectionNav':'discoverNav').setAttribute('aria-current','page');}
+    function renderCollection() {imageQueue.clear(grid);grid.replaceChildren();app.items=[...app.saved.values()];app.cardIndex.clear();$('resultCount').textContent=app.items.length+' saved vision'+(app.items.length===1?'':'s');if(!app.items.length)showEmpty(true);else {paintGrid(app.items);setLoadState('end','YOUR STAND COLLECTION. LOADED ONLINE, SAVED LOCALLY.');}}
+    function showCollection() {cancelSearch();app.collection=true;app.items=[...app.saved.values()];form.hidden=true;$('hero').hidden=true;$('collectionNote').hidden=false;$('feedTitle').firstChild.textContent='YOUR STAND COLLECTION ';loadRegion.hidden=false;setNav();renderCollection();updateURL();$('catalog').scrollIntoView({behavior:'smooth',block:'start'});}
+    function showDiscover() {if(app.collection){app.collection=false;startSearch();}$('catalog').scrollIntoView({behavior:'smooth',block:'start'});}
+    function toggleSaved(id) {const w=app.cardIndex.get(id)||app.view;if(!w||!w.thumbs)return;setSaved(w);}
+    function clearViewerImage() {imageQueue.cancel($('viewerImage'));$('viewerImage').classList.remove('is-loaded');$('viewerImage').removeAttribute('src');$('viewerStage').classList.add('loading');}
+    function showViewerError() {$('viewerStage').classList.remove('loading');const error=document.createElement('div');error.className='viewer-image-error';error.innerHTML=icon('globe')+'<p>The image signal was interrupted.<br>Try again or open the original on Wallhaven.</p><button class="secondary-btn">Retry preview ↺</button>';error.querySelector('button').onclick=()=>{error.remove();loadViewerImage(false);};$('viewerStage').appendChild(error);}
+    function loadViewerImage(full=false) {
+      if(!app.view)return;const w=app.view;clearViewerImage();$('viewerStage').querySelector('.viewer-image-error')?.remove();
+      $('viewerPreviewLabel').textContent=full?'ORIGINAL RESOLUTION':'PREVIEW · FULL RESOLUTION ON DEMAND';
+      $('fullImageBtn').textContent=full?'Switch to lightweight preview':'Load full-resolution preview';
+      imageQueue.attach($('viewerImage'),imageSources(full?w.path:w.thumbs?.large||w.path,full?'full':'thumb'),{eager:true,priority:true,onFailure:showViewerError});
+    }
+    function updateViewerMeta(w) {
+      $('viewerTitle').textContent='#'+w.id;$('viewerCategory').textContent=w.category||'WALLPAPER';$('viewerResolution').textContent=w.resolution||'—';$('viewerFileSize').textContent=w.file_size?(w.file_size/1024/1024).toFixed(1)+' MB':'—';$('viewerUploader').textContent=w.uploader||'—';$('viewerFavorites').textContent=String(w.favorites||0);
+      $('originalLink').href=w.url;const palette=$('viewerPalette');palette.replaceChildren();(w.colors||[]).forEach(c=>{const b=document.createElement('button');b.className='palette-chip';b.style.setProperty('--swatch',c);b.title='Search color '+c;b.setAttribute('aria-label','Find wallpapers with color '+c);b.dataset.filterColor=c.slice(1);palette.appendChild(b);});
+      const list=$('viewerTags');list.replaceChildren();(w.tags||[]).forEach(t=>{const b=document.createElement('button');b.className='tag';b.textContent=t.name;b.dataset.tag=t.name;b.title='Search '+t.name;list.appendChild(b);});
+      updateSavedUI();
+    }
+    async function openViewer(id) {
+      const w=app.cardIndex.get(id)||[...app.saved.values()].find(item=>item.id===id)||wallpaperFromID(id);if(!w)return;
+      app.view=w;const epoch=++app.viewerEpoch;app.detailAbort?.abort();app.downloadAbort?.abort();app.detailAbort=new AbortController();
+      if(!$('viewerDialog').open)$('viewerDialog').showModal();
+      loadViewerImage(false);updateViewerMeta(w);$('metaStatus').textContent='Connecting to wallpaper details…';
+      const index=app.items.findIndex(i=>i.id===id);$('viewerPosition').textContent=index>=0?' / '+String(index+1).padStart(2,'0'):' / DETAIL';
+      $('prevWallpaper').disabled=index<=0;$('nextWallpaper').disabled=index<0||index>=app.items.length-1;
+      $('downloadBtn').disabled=!w.path;$('fullImageBtn').disabled=!w.path;$('downloadBtn').querySelector('span').textContent='DOWNLOAD ORIGINAL';$('viewerSave').disabled=!w.thumbs;
+      try {
+        const json=await network.request(CONFIG.API+'/w/'+id,app.detailAbort.signal);if(epoch!==app.viewerEpoch||!$('viewerDialog').open)return;
+        const clean=normalizeWallpaper(json.data);if(!clean)throw new NetworkError('No wallpaper details available.');
+        if(clean.purity==='nsfw') {
+          clearViewerImage();$('viewerStage').classList.remove('loading');$('viewerSave').disabled=true;$('downloadBtn').disabled=true;$('fullImageBtn').disabled=true;
+          $('metaStatus').textContent='Restricted content. This public viewer displays SFW previews only; use an authorized Wallhaven account for NSFW.';
+          showViewerError();$('viewerStage').querySelector('.viewer-image-error button')?.setAttribute('hidden','');return;
+        }
+        app.view=clean;app.cardIndex.set(clean.id,clean);updateViewerMeta(clean);$('metaStatus').textContent='Click a tag or color to discover more.';
+        $('downloadBtn').disabled=false;$('fullImageBtn').disabled=false;$('viewerSave').disabled=false;
+        if(!w.thumbs)loadViewerImage(false);
+      }catch(error) {
+        if(error.name==='AbortError'||epoch!==app.viewerEpoch)return;
+        $('metaStatus').textContent=w.thumbs?'Preview available. Details could not be loaded.':'This wallpaper could not be connected to the archive.';
+        const retry=document.createElement('button');retry.type='button';retry.className='text-btn';retry.textContent='Retry details ↺';retry.onclick=()=>openViewer(id);
+        $('metaStatus').appendChild(document.createElement('br'),retry);
+      }
+    }
+    function closeViewer() {$('viewerDialog').close();}
+    function stepViewer(direction) {const index=app.items.findIndex(w=>w.id===app.view?.id);const next=app.items[index+direction];if(next)openViewer(next.id);}
+    async function downloadOriginal() {
+      const w=app.view;if(!w?.path)return;app.downloadAbort?.abort();const ctrl=new AbortController();app.downloadAbort=ctrl;const b=$('downloadBtn');b.disabled=true;b.querySelector('span').textContent='CONNECTING…';
+      try {const blob=await network.request(w.path,ctrl.signal,'blob');if(ctrl.signal.aborted)return;const objectURL=URL.createObjectURL(blob);const link=document.createElement('a');link.href=objectURL;link.download='bizarre-vision-'+w.id+'.'+(blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg');document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectURL),30000);toast('Your original is ready. Make it your new reality.');}
+      catch(error) {if(error.name!=='AbortError')toast('Original download unavailable. Use View on Wallhaven instead.');}
+      finally {if(!ctrl.signal.aborted){b.disabled=false;b.querySelector('span').textContent='DOWNLOAD ORIGINAL';}}
+    }
+    async function copyText(text) {
+      try{await navigator.clipboard.writeText(text);}
+      catch {
+        const previous=document.activeElement,t=document.createElement('textarea');t.value=text;t.readOnly=true;
+        t.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+        (document.querySelector('dialog[open]')||document.body).appendChild(t);t.select();
+        const ok=document.execCommand('copy');t.remove();previous?.focus({preventScroll:true});if(!ok)throw new Error('Copy unavailable');
+      }
+      toast('Vision link copied. Share the bizarre.');
+    }
+    function renderNetwork() {
+      const list=$('routeList');list.replaceChildren();const routes=[...CONFIG.ROUTES];const custom=getCustomRoute();if(custom)routes.push(custom);
+      routes.forEach(route=>{const stats=routeStats.get(route.id);const row=document.createElement('div');row.className='route-row';const label=document.createElement('div');const title=document.createElement('strong');title.textContent=route.name;const desc=document.createElement('small');desc.textContent=route.id==='direct'?'Images & API · no intermediary':route.id==='custom'?'User-configured HTTPS endpoint':'Public CORS relay · GET only';label.append(title,desc);const status=document.createElement('span');status.className='route-state';if(stats?.state==='ok'){status.classList.add('ok');status.textContent='ONLINE · '+stats.ms+' ms';}else if(stats?.state==='failed'){status.classList.add('failed');status.textContent='UNAVAILABLE';status.title=stats.error;}else{status.textContent=(network.failedUntil.get(route.id)||0)>Date.now()?'COOLING DOWN':'NOT TESTED';}row.append(label,status);list.appendChild(row);});
+      $('routePreference').value=routes.some(r=>r.id===network.preferred)?network.preferred:'auto';$('customRelay').value=storage.get('custom','');
+    }
+    function openNetwork() {renderNetwork();$('networkDialog').showModal();}
+    function refreshHero() {
+      imageQueue.attach($('heroFront'),imageSources('https://th.wallhaven.cc/lg/ly/ly21ly.jpg'),{eager:true,priority:true});
+      imageQueue.attach($('heroBack'),imageSources('https://th.wallhaven.cc/lg/je/je1ovm.jpg'),{eager:true});
+    }
+    function applyURLFilters() {
+      restoreDefaults();const q=new URL(location.href).searchParams;['q','categories','sorting','atleast','ratios','colors','topRange','purity','order'].forEach(k=>{if(q.has(k)&&$(k))$(k).value=q.get(k).slice(0,160);});
+      if(!/^[01]{3}$/.test($('categories').value))$('categories').value='111';if(!['100','110'].includes($('purity').value))$('purity').value='100';syncFilters();
+    }
+    form.addEventListener('submit',e=>{e.preventDefault();startSearch();});
+    form.q.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();form.q.value='';}});
+    $('sorting').addEventListener('change',()=>{syncFilters();startSearch();});
+    $('filterToggle').onclick=()=>{const expanded=$('advancedFilters').hidden;$('advancedFilters').hidden=!expanded;$('filterToggle').setAttribute('aria-expanded',String(expanded));};
+    $('qualityToggle').onclick=()=>{$('atleast').value=$('atleast').value==='3840x2160'?'':'3840x2160';syncFilters();startSearch();};
+    document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{$('categories').value=b.dataset.category;syncFilters();startSearch();});
+    document.querySelectorAll('[data-density]').forEach(b=>b.onclick=()=>{
+      setDensity(b.dataset.density);grid.querySelectorAll('img').forEach(img=>{
+        const w=app.cardIndex.get(img.dataset.id);if(!w)return;
+        const source=chooseThumb(w);
+        if(img.classList.contains('is-loaded')&&img.dataset.sourceKey===source)return;
+        img.closest('.image-failure')?.remove();imageQueue.attach(img,imageSources(source));
+      });
+    });
+    $('advancedFilters').addEventListener('change',()=>{syncFilters();startSearch();});
+    $('resetFilters').onclick=()=>{restoreDefaults();startSearch();};
+    $('activeFilters').addEventListener('click',e=>{const b=e.target.closest('[data-remove-filter]');if(b){$(b.dataset.removeFilter).value='';syncFilters();startSearch();}});
+    grid.addEventListener('click',e=>{const save=e.target.closest('[data-save]');if(save){toggleSaved(save.dataset.save);return;}if(e.target.closest('.image-retry'))return;const open=e.target.closest('[data-open]');if(open)openViewer(open.dataset.open);});
+    $('blurToggle').onclick=()=>setBlur(!app.blur);$('helpBtn').onclick=()=>$('helpDialog').showModal();$('loreBtn').onclick=()=>$('helpDialog').showModal();
+    $('networkBtn').onclick=openNetwork;$('helpNetworkBtn').onclick=()=>{$('helpDialog').close();openNetwork();};
+    $('discoverNav').onclick=()=>{showDiscover();};$('collectionNav').onclick=showCollection;
+    $('exploreBtn').onclick=()=>{showDiscover();setTimeout(()=>form.q.focus({preventScroll:true}),350);};
+    $('brandLink').onclick=e=>{e.preventDefault();restoreDefaults();app.collection=false;startSearch();window.scrollTo({top:0,behavior:'smooth'});};
+    $('topBtn').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+    $('refreshBtn').onclick=()=>{if(app.collection){renderCollection();toast('Collection refreshed. Images will reload online.');}else{network.reset();startSearch(true);}};
+    $('prevWallpaper').onclick=()=>stepViewer(-1);$('nextWallpaper').onclick=()=>stepViewer(1);
+    $('viewerSave').onclick=()=>{if(app.view?.thumbs)setSaved(app.view);};
+    $('downloadBtn').onclick=downloadOriginal;
+    $('fullImageBtn').onclick=()=>{if(!app.view?.path)return;loadViewerImage($('viewerPreviewLabel').textContent.startsWith('PREVIEW'));};
+    $('copyLinkBtn').onclick=()=>{if(app.view){const u=new URL(location.href);u.search='';u.hash='';u.searchParams.set('wallpaper',app.view.id);copyText(u.href).catch(()=>toast('Copy unavailable. You can copy the Wallhaven link instead.'));}};
+    $('viewerPalette').onclick=e=>{const b=e.target.closest('[data-filter-color]');if(b){const c=b.dataset.filterColor;closeViewer();restoreDefaults();$('colors').value=c;syncFilters();startSearch();$('catalog').scrollIntoView({behavior:'smooth'});}};
+    $('viewerTags').onclick=e=>{const b=e.target.closest('[data-tag]');if(b){const name=b.dataset.tag;closeViewer();restoreDefaults();$('q').value=/\s/.test(name)?'+"'+name.replace(/"/g,'')+'"':'+'+name;syncFilters();startSearch();$('catalog').scrollIntoView({behavior:'smooth'});}};
+    $('applyNetwork').onclick=()=>{const endpoint=$('customRelay').value.trim();if(endpoint){try{const u=new URL(endpoint);if(u.protocol!=='https:'||u.username||u.password||u.port||!u.searchParams.has('url'))throw new Error();}catch{toast('Use an HTTPS relay with a url= query parameter.');$('customRelay').focus();return;}}if($('routePreference').value==='custom'&&!endpoint){toast('Add your own HTTPS relay, or choose Auto.');$('customRelay').focus();return;}network.preferred=$('routePreference').value;storage.set('route',network.preferred);storage.set('custom',endpoint);network.reset();$('networkDialog').close();toast('Connection preferences saved. Reconnecting…');if(app.collection)renderCollection();else{startSearch(true);}renderNetwork();};
+    document.querySelectorAll('dialog').forEach(dialog=>{
+      dialog.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>dialog.close());
+      dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
+      dialog.addEventListener('close',()=>{if($('toast').parentElement===dialog)document.body.appendChild($('toast'));});
+    });
+    $('viewerReveal').onclick=()=>setBlur(!app.blur);
+    $('viewerDialog').addEventListener('close',()=>{app.viewerEpoch++;app.detailAbort?.abort();app.downloadAbort?.abort();clearViewerImage();$('viewerStage').querySelector('.viewer-image-error')?.remove();});
+    document.addEventListener('keydown',e=>{
+      if(e.ctrlKey||e.altKey||e.metaKey||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;
+      const dialog=document.querySelector('dialog[open]');
+      if(dialog){
+        if(dialog===$('viewerDialog')){
+          if(e.key==='ArrowRight'){e.preventDefault();stepViewer(1);}
+          if(e.key==='ArrowLeft'){e.preventDefault();stepViewer(-1);}
+          if(e.key.toLowerCase()==='b'){e.preventDefault();setBlur(!app.blur);}
+        }return;
+      }
+      if(e.key==='/'){e.preventDefault();if(app.collection)showDiscover();form.q.focus();}
+      else if(e.key.toLowerCase()==='b')setBlur(!app.blur);
+      else if(e.key==='?')$('helpDialog').showModal();
+    });
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!app.busy&&!app.error&&!app.collection&&app.page<app.lastPage&&!document.hidden&&!document.querySelector('dialog[open]'))loadPage();},{rootMargin:'650px 0px',threshold:0});observer.observe(sentinel);
+    window.addEventListener('online',()=>{if(app.error&&!app.collection){app.error=null;network.reset();loadPage();}});
+    window.addEventListener('offline',()=>{network.setStatus('offline','OFFLINE');});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!app.busy&&!app.error&&app.page<app.lastPage&&sentinel.getBoundingClientRect().top<innerHeight+650)loadPage();});
+    window.addEventListener('popstate',()=>{applyURLFilters();if(location.hash==='#collection')showCollection();else startSearch();});
+    setBlur(app.blur);setDensity(app.density);applyURLFilters();updateSavedUI();refreshHero();
+    if(location.hash==='#collection')showCollection();else startSearch();
+    const wallpaperID=new URL(location.href).searchParams.get('wallpaper');if(wallpaperID&&/^[a-z0-9]{6}$/i.test(wallpaperID))openViewer(wallpaperID);
+    // A hard cap prevents duplicate pages; the random seed is retained across the entire search.
+    // There is no persistent image cache, service worker, fake data or offline wallpaper fallback.
+  })();
+  </script>
+</body>
 </html>
